@@ -8,6 +8,7 @@ using OmniFetch.App.ViewModels;
 using OmniFetch.App.Views;
 using OmniFetch.Core.Engine;
 using OmniFetch.Core.Ipc;
+using OmniFetch.Core.Media;
 using OmniFetch.Core.Persistence;
 
 namespace OmniFetch.App;
@@ -48,6 +49,13 @@ public static class MauiProgram
         builder.Services.AddSingleton<IDownloadEngine>(engine);
         builder.Services.AddSingleton<IIpcServer>(ipcServer);
         builder.Services.AddSingleton<IActivityLockService>(activityLockService);
+
+        // Media & HLS Stream Services
+        builder.Services.AddSingleton<IHlsParser, HlsParser>();
+        builder.Services.AddSingleton<IFFmpegLocator, FFmpegLocator>();
+        builder.Services.AddSingleton<IHlsSegmentDownloader, HlsSegmentDownloader>();
+        builder.Services.AddSingleton<IHlsVideoAssembler, HlsVideoAssembler>();
+        builder.Services.AddSingleton<IHlsDownloadManager, HlsDownloadManager>();
 
         // 3. Register ViewModels and Views
         builder.Services.AddSingleton<MainViewModel>();

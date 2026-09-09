@@ -15,6 +15,7 @@ using OmniFetch.Core.Common;
 using OmniFetch.Core.Engine;
 using OmniFetch.Core.Exceptions;
 using OmniFetch.Core.Ipc;
+using OmniFetch.Core.Media;
 using OmniFetch.Core.Models;
 using OmniFetch.Core.Persistence;
 
@@ -28,6 +29,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IIpcServer _ipcServer;
     private readonly IDownloadRepository? _repository;
     private readonly IActivityLockService? _activityLockService;
+    private readonly IHlsDownloadManager? _hlsDownloadManager;
+
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _activeTokens = new();
     private IDisposable? _activeTransferLock;
 
@@ -40,6 +43,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private DownloadItemViewModel? _selectedDownload;
+
+    [ObservableProperty]
+    private string _searchText = string.Empty;
 
     [ObservableProperty]
     private string _statusBarText = "Ready";
@@ -58,12 +64,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IDownloadEngine engine,
         IIpcServer ipcServer,
         IDownloadRepository? repository = null,
-        IActivityLockService? activityLockService = null)
+        IActivityLockService? activityLockService = null,
+        IHlsDownloadManager? hlsDownloadManager = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _ipcServer = ipcServer ?? throw new ArgumentNullException(nameof(ipcServer));
         _repository = repository;
         _activityLockService = activityLockService;
+        _hlsDownloadManager = hlsDownloadManager;
 
         InitializeCategories();
 
@@ -236,30 +244,102 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Referrer = referrer
             };
 
-            var job = await _engine.CreateJobAsync(url, destPath, options).ConfigureAwait(false);
-            var item = new DownloadItemViewModel(job.Id, job.Url, job.DestinationFilePath, job.TotalBytes);
+            bool isHls = url.Contains(".m3u8", StringComparison.OrdinalIgnoreCase);
+            if (isHls && _hlsDownloadManager != null)
+            {
+                if (!destPath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) && !destPath.EndsWith(".ts", StringComparison.OrdinalIgnoreCase))
+                {
+                    destPath = Path.ChangeExtension(destPath, ".mp4");
+                }
+
+                var job = new DownloadJobInfo
+                {
+                    Url = url,
+                    DestinationFilePath = destPath,
+                    TotalBytes = -1,
+                    ContentType = "application/x-mpegURL",
+                    SupportsRange = false,
+                    Cookies = cookies,
+                    UserAgent = userAgent,
+                    Referrer = referrer,
+                    Status = DownloadStatus.Queued
+                };
+
+                if (_repository != null)
+                {
+                    await _repository.AddJobAsync(job).ConfigureAwait(false);
+                }
+
+                var item = new DownloadItemViewModel(job.Id, job.Url, job.DestinationFilePath, job.TotalBytes);
+
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    AllDownloads.Insert(0, item);
+                    ApplyCategoryFilter();
+                    UpdateCategoryCounts();
+                    SelectedDownload = item;
+                });
+
+                var cts = new CancellationTokenSource();
+                _activeTokens[job.Id] = cts;
+                var progressHandler = new Progress<DownloadProgressSnapshot>(snapshot => OnEngineProgressChanged(this, snapshot));
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _hlsDownloadManager.DownloadHlsJobAsync(job, options, progress: progressHandler, ct: cts.Token).ConfigureAwait(false);
+                        OnEngineStatusChanged(this, (job.Id, DownloadStatus.Completed));
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        OnEngineStatusChanged(this, (job.Id, DownloadStatus.Paused));
+                    }
+                    catch (Exception)
+                    {
+                        OnEngineStatusChanged(this, (job.Id, DownloadStatus.Failed));
+                    }
+                    finally
+                    {
+                        _activeTokens.TryRemove(job.Id, out _);
+                        MainThread.BeginInvokeOnMainThread(UpdateAggregateMetrics);
+                    }
+                });
+
+                if (RequestOpenProgressDialogHandler != null)
+                {
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        await RequestOpenProgressDialogHandler.Invoke(item);
+                    });
+                }
+
+                return item;
+            }
+
+            var regularJob = await _engine.CreateJobAsync(url, destPath, options).ConfigureAwait(false);
+            var regularItem = new DownloadItemViewModel(regularJob.Id, regularJob.Url, regularJob.DestinationFilePath, regularJob.TotalBytes);
 
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                AllDownloads.Insert(0, item);
+                AllDownloads.Insert(0, regularItem);
                 ApplyCategoryFilter();
                 UpdateCategoryCounts();
-                SelectedDownload = item;
+                SelectedDownload = regularItem;
             });
 
-            var cts = new CancellationTokenSource();
-            _activeTokens[job.Id] = cts;
-            _ = Task.Run(() => _engine.StartDownloadAsync(job, options, cancellationToken: cts.Token));
+            var regCts = new CancellationTokenSource();
+            _activeTokens[regularJob.Id] = regCts;
+            _ = Task.Run(() => _engine.StartDownloadAsync(regularJob, options, cancellationToken: regCts.Token));
 
             if (RequestOpenProgressDialogHandler != null)
             {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    await RequestOpenProgressDialogHandler.Invoke(item);
+                    await RequestOpenProgressDialogHandler.Invoke(regularItem);
                 });
             }
 
-            return item;
+            return regularItem;
         }
         catch (Exception ex)
         {
