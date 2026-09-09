@@ -123,23 +123,6 @@
   // 2. IDM-Style Floating Video Grabber
   const detectedStreams = new Set();
 
-  if (isExtensionValid()) {
-    try {
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (!isExtensionValid()) {
-          cleanupOnInvalidatedContext();
-          return false;
-        }
-        if (message && message.type === "STREAM_DETECTED" && message.url) {
-          detectedStreams.add(message.url);
-          attachVideoGrabbers();
-        }
-        return false;
-      });
-    } catch (err) {
-      cleanupOnInvalidatedContext();
-    }
-  }
 
   function attachVideoGrabbers() {
     if (!isExtensionValid()) {
@@ -223,7 +206,7 @@
           } else if (res.data && res.data.status === "error") {
             showFloatingNotification("OmniFetch: " + (res.data.message || "Download declined"));
           } else {
-            showFloatingNotification("OmniFetch: Video download started successfully!");
+            showFloatingNotification("OmniFetch: Download queued in OmniFetch! Check desktop app.");
           }
         });
       } else {

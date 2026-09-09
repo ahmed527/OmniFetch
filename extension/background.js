@@ -282,27 +282,6 @@ chrome.webRequest.onBeforeRequest.addListener(
         tabStreams.set(details.tabId, new Set());
       }
       tabStreams.get(details.tabId).add(streamUrl);
-
-      chrome.storage.local.get("videoGrabberEnabled", (cfg) => {
-        if (!cfg || cfg.videoGrabberEnabled === false) return;
-
-        try {
-          const p = chrome.tabs.sendMessage(details.tabId, {
-            type: "STREAM_DETECTED",
-            url: streamUrl,
-            isHls: lowerUrl.includes(".m3u8"),
-            isDash: lowerUrl.includes(".mpd"),
-            isYouTube: lowerUrl.includes("googlevideo.com")
-          }, () => {
-            if (chrome.runtime.lastError) {
-              // Safely suppress: receiving tab may not have content script injected
-            }
-          });
-          if (p && typeof p.catch === "function") {
-            p.catch(() => {});
-          }
-        } catch (e) {}
-      });
     }
   },
   { urls: ["<all_urls>"], types: ["xmlhttprequest", "other", "media"] }

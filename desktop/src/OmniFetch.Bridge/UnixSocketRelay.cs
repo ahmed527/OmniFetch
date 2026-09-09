@@ -42,7 +42,7 @@ public static class UnixSocketRelay
 
         using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         using var operationCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        operationCts.CancelAfter(TimeSpan.FromSeconds(5));
+        operationCts.CancelAfter(TimeSpan.FromSeconds(15));
         var opToken = operationCts.Token;
 
         try

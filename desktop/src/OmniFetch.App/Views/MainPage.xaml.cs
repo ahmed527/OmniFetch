@@ -67,12 +67,20 @@ public partial class MainPage : ContentPage
 
     private async Task<AddDownloadParams?> PromptAddDownloadAsync()
     {
+        var nav = Navigation;
+        if (nav == null && Application.Current?.Windows.Count > 0)
+        {
+            nav = Application.Current.Windows[0].Page?.Navigation;
+        }
+
+        if (nav == null) return null;
+
         var addVm = new AddDownloadViewModel(_settingsService);
         var dialog = new AddDownloadDialog(addVm);
-        await Navigation.PushModalAsync(dialog);
+        await nav.PushModalAsync(dialog, false);
 
         // Wait until dismissed
-        while (Navigation.ModalStack.Contains(dialog))
+        while (nav.ModalStack.Contains(dialog))
         {
             await Task.Delay(100);
         }
@@ -88,17 +96,29 @@ public partial class MainPage : ContentPage
     private async Task<AddDownloadParams?> PromptIpcDownloadAsync(NativeDownloadRequest request)
     {
         var tcs = new TaskCompletionSource<AddDownloadParams?>();
-        MainThread.BeginInvokeOnMainThread(async () =>
+        await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             try
             {
+                var nav = Navigation;
+                if (nav == null && Application.Current?.Windows.Count > 0)
+                {
+                    nav = Application.Current.Windows[0].Page?.Navigation;
+                }
+
+                if (nav == null)
+                {
+                    tcs.TrySetResult(null);
+                    return;
+                }
+
                 var addVm = new AddDownloadViewModel(_settingsService);
                 addVm.SetExplicitFileDetails(request.Url, request.SuggestedFileName, request.Cookies, request.FileSize);
 
                 var dialog = new AddDownloadDialog(addVm);
-                await Navigation.PushModalAsync(dialog);
+                await nav.PushModalAsync(dialog, false);
 
-                while (Navigation.ModalStack.Contains(dialog))
+                while (nav.ModalStack.Contains(dialog))
                 {
                     await Task.Delay(100);
                 }

@@ -679,6 +679,24 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    private static void BringAppToForeground()
+    {
+        try
+        {
+            if (OperatingSystem.IsMacOS() || OperatingSystem.IsMacCatalyst())
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "open",
+                    Arguments = "-a OmniFetch",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                })?.Dispose();
+            }
+        }
+        catch { }
+    }
+
     private Task<IpcResponse> HandleIpcDownloadAsync(NativeDownloadRequest request)
     {
         return Task.Run(async () =>
@@ -691,38 +709,62 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 var category = DownloadItemViewModel.DeduceCategory(sanitizedFileName);
                 string targetDir = _settingsService?.GetSaveDirectoryForCategory(category.ToString()) ?? settings.DefaultDownloadDirectory;
 
-                string? customDest = null;
+                // Bring desktop application to front immediately
+                BringAppToForeground();
 
                 if (settings.ShowStartDialog && RequestIpcPromptHandler != null)
                 {
-                    var promptResult = await RequestIpcPromptHandler.Invoke(request);
-                    if (promptResult == null)
+                    // Decouple UI modal prompt from IPC socket response to prevent Native Messaging timeout.
+                    // The socket server returns Accepted immediately; UI modal runs asynchronously.
+                    _ = Task.Run(async () =>
                     {
-                        return IpcResponse.Error("CANCELLED", "Download cancelled by user");
-                    }
+                        try
+                        {
+                            var promptResult = await RequestIpcPromptHandler.Invoke(request);
+                            if (promptResult != null)
+                            {
+                                string customDest;
+                                if (!string.IsNullOrWhiteSpace(promptResult.DestinationPath) && !string.IsNullOrWhiteSpace(promptResult.FileName))
+                                {
+                                    customDest = Path.Combine(promptResult.DestinationPath, promptResult.FileName);
+                                }
+                                else
+                                {
+                                    customDest = Path.Combine(targetDir, sanitizedFileName);
+                                }
 
-                    if (!string.IsNullOrWhiteSpace(promptResult.DestinationPath) && !string.IsNullOrWhiteSpace(promptResult.FileName))
-                    {
-                        customDest = Path.Combine(promptResult.DestinationPath, promptResult.FileName);
-                    }
+                                await StartNewDownloadUrlAsync(
+                                    request.Url,
+                                    customDest,
+                                    promptResult.Cookies ?? request.Cookies,
+                                    request.UserAgent,
+                                    request.Referrer);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[MainViewModel.HandleIpcDownloadAsync] Prompt error: {ex.Message}");
+                        }
+                    });
+
+                    return IpcResponse.Accepted(Guid.NewGuid(), sanitizedFileName, "Download queued in OmniFetch");
                 }
                 else
                 {
-                    customDest = Path.Combine(targetDir, sanitizedFileName);
-                }
+                    string customDest = Path.Combine(targetDir, sanitizedFileName);
+                    var item = await StartNewDownloadUrlAsync(
+                        request.Url,
+                        customDest,
+                        request.Cookies,
+                        request.UserAgent,
+                        request.Referrer);
 
-                var item = await StartNewDownloadUrlAsync(
-                    request.Url,
-                    customDest,
-                    request.Cookies,
-                    request.UserAgent,
-                    request.Referrer);
-
-                if (item != null)
-                {
-                    return IpcResponse.Accepted(item.JobId, item.FileName, "Download accepted by OmniFetch");
+                    if (item != null)
+                    {
+                        return IpcResponse.Accepted(item.JobId, item.FileName, "Download accepted by OmniFetch");
+                    }
+                    return IpcResponse.Error("FAILED_TO_CREATE", "Could not start download");
                 }
-                return IpcResponse.Error("FAILED_TO_CREATE", "Could not start download");
             }
             catch (Exception ex)
             {
