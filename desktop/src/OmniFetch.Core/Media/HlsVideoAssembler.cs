@@ -69,7 +69,7 @@ public class HlsVideoAssembler : IHlsVideoAssembler
         {
             await GenerateConcatFileAsync(segmentPaths, concatManifestPath, ct).ConfigureAwait(false);
 
-            // Lossless remux: stream copy, aac bitstream filter, faststart for streaming
+            // Lossless remux: stream copy, optional audio aac bitstream filter, faststart for streaming
             string arguments = $"-y -f concat -safe 0 -i \"{concatManifestPath}\" -c copy -bsf:a aac_adtstoasc -movflags +faststart \"{destinationFilePath}\"";
 
             await RunFFmpegAsync(ffmpegPath, arguments, ct).ConfigureAwait(false);

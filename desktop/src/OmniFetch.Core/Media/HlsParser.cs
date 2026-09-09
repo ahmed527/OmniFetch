@@ -55,6 +55,8 @@ public partial class HlsParser : IHlsParser
         while ((line = reader.ReadLine()) != null)
         {
             line = line.Trim();
+            if (string.IsNullOrEmpty(line)) continue;
+
             if (line.StartsWith("#EXT-X-MEDIA:", StringComparison.OrdinalIgnoreCase))
             {
                 string type = "AUDIO";

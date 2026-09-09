@@ -52,81 +52,73 @@ public class HlsSegmentDownloader : IHlsSegmentDownloader
         long lastSpeedTimeMs = 0;
         double smoothedSpeed = 0;
 
-        using var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
-        var downloadTasks = new List<Task>();
-
         for (int i = 0; i < total; i++)
         {
             var segment = playlist.Segments[i];
-            string targetPath = Path.Combine(stagingDirectory, $"segment_{segment.Index:D6}.ts");
-            segmentPaths[i] = targetPath;
+            segmentPaths[i] = Path.Combine(stagingDirectory, $"segment_{segment.Index:D6}.ts");
+        }
+
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = maxConcurrency,
+            CancellationToken = ct
+        };
+
+        await Parallel.ForEachAsync(playlist.Segments, parallelOptions, async (segment, token) =>
+        {
+            string targetPath = segmentPaths[segment.Index];
 
             // Resume support: if chunk is already downloaded and decrypted, skip
             if (File.Exists(targetPath) && new FileInfo(targetPath).Length > 0)
             {
                 Interlocked.Increment(ref completedCount);
                 Interlocked.Add(ref totalDownloadedBytes, new FileInfo(targetPath).Length);
-                continue;
+                return;
             }
 
-            int index = i;
-            downloadTasks.Add(Task.Run(async () =>
+            byte[] rawBytes = await DownloadChunkBytesAsync(segment, options, token).ConfigureAwait(false);
+
+            byte[] finalBytes = rawBytes;
+            if (segment.Encryption != null && segment.Encryption.Method == HlsEncryptionMethod.Aes128)
             {
-                await semaphore.WaitAsync(ct).ConfigureAwait(false);
-                try
+                long seqNum = playlist.MediaSequence + segment.Index;
+                finalBytes = await DecryptChunkAsync(rawBytes, segment.Encryption, seqNum, options, token).ConfigureAwait(false);
+            }
+
+            await File.WriteAllBytesAsync(targetPath, finalBytes, token).ConfigureAwait(false);
+
+            int done = Interlocked.Increment(ref completedCount);
+            long downloaded = Interlocked.Add(ref totalDownloadedBytes, finalBytes.Length);
+
+            // Speed calculation
+            long nowMs = stopwatch.ElapsedMilliseconds;
+            long elapsedSinceLast = nowMs - Volatile.Read(ref lastSpeedTimeMs);
+            if (elapsedSinceLast >= 250) // 4 Hz
+            {
+                long bytesSinceLast = downloaded - Volatile.Read(ref lastSpeedBytes);
+                double instSpeed = bytesSinceLast / (elapsedSinceLast / 1000.0);
+                smoothedSpeed = smoothedSpeed <= 0 ? instSpeed : (0.25 * instSpeed + 0.75 * smoothedSpeed);
+                Volatile.Write(ref lastSpeedBytes, downloaded);
+                Volatile.Write(ref lastSpeedTimeMs, nowMs);
+
+                TimeSpan? eta = null;
+                if (smoothedSpeed > 0 && done > 0)
                 {
-                    ct.ThrowIfCancellationRequested();
-                    byte[] rawBytes = await DownloadChunkBytesAsync(segment, options, ct).ConfigureAwait(false);
-
-                    byte[] finalBytes = rawBytes;
-                    if (segment.Encryption != null && segment.Encryption.Method == HlsEncryptionMethod.Aes128)
-                    {
-                        long seqNum = playlist.MediaSequence + segment.Index;
-                        finalBytes = await DecryptChunkAsync(rawBytes, segment.Encryption, seqNum, options, ct).ConfigureAwait(false);
-                    }
-
-                    await File.WriteAllBytesAsync(targetPath, finalBytes, ct).ConfigureAwait(false);
-
-                    int done = Interlocked.Increment(ref completedCount);
-                    long downloaded = Interlocked.Add(ref totalDownloadedBytes, finalBytes.Length);
-
-                    // Speed calculation
-                    long nowMs = stopwatch.ElapsedMilliseconds;
-                    long elapsedSinceLast = nowMs - lastSpeedTimeMs;
-                    if (elapsedSinceLast >= 250) // 4 Hz
-                    {
-                        long bytesSinceLast = downloaded - lastSpeedBytes;
-                        double instSpeed = bytesSinceLast / (elapsedSinceLast / 1000.0);
-                        smoothedSpeed = smoothedSpeed <= 0 ? instSpeed : (0.25 * instSpeed + 0.75 * smoothedSpeed);
-                        lastSpeedBytes = downloaded;
-                        lastSpeedTimeMs = nowMs;
-
-                        TimeSpan? eta = null;
-                        if (smoothedSpeed > 0 && done > 0)
-                        {
-                            double avgSegmentBytes = (double)downloaded / done;
-                            long remainingEstBytes = (long)((total - done) * avgSegmentBytes);
-                            eta = TimeSpan.FromSeconds(remainingEstBytes / smoothedSpeed);
-                        }
-
-                        progress?.Report(new HlsDownloadProgress
-                        {
-                            CompletedSegments = done,
-                            TotalSegments = total,
-                            DownloadedBytes = downloaded,
-                            SpeedBytesPerSecond = smoothedSpeed,
-                            EstimatedTimeRemaining = eta
-                        });
-                    }
+                    double avgSegmentBytes = (double)downloaded / done;
+                    long remainingEstBytes = (long)((total - done) * avgSegmentBytes);
+                    eta = TimeSpan.FromSeconds(remainingEstBytes / smoothedSpeed);
                 }
-                finally
+
+                progress?.Report(new HlsDownloadProgress
                 {
-                    semaphore.Release();
-                }
-            }, ct));
-        }
-
-        await Task.WhenAll(downloadTasks).ConfigureAwait(false);
+                    CompletedSegments = done,
+                    TotalSegments = total,
+                    DownloadedBytes = downloaded,
+                    SpeedBytesPerSecond = smoothedSpeed,
+                    EstimatedTimeRemaining = eta
+                });
+            }
+        }).ConfigureAwait(false);
 
         // Final 100% progress report
         progress?.Report(new HlsDownloadProgress
