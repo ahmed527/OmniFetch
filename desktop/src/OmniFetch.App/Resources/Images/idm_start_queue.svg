@@ -1,9 +1,20 @@
 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Stack of 3 pages -->
-  <rect x="7" y="5" width="22" height="28" rx="2" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.5"/>
-  <rect x="12" y="9" width="22" height="28" rx="2" fill="#F1F5F9" stroke="#94A3B8" stroke-width="1.5"/>
-  <rect x="17" y="13" width="22" height="28" rx="2" fill="white" stroke="#64748B" stroke-width="2"/>
-  <!-- Green Play Badge -->
-  <circle cx="34" cy="34" r="11" fill="#10B981" stroke="#047857" stroke-width="2"/>
-  <polygon points="30,28 40,34 30,40" fill="white"/>
+  <defs>
+    <linearGradient id="folderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="50%" stop-color="#EAB308"/>
+      <stop offset="100%" stop-color="#CA8A04"/>
+    </linearGradient>
+    <linearGradient id="greenPlayGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Folder Back Tab -->
+  <path d="M6 12C6 10.3431 7.34315 9 9 9H18L22 13H39C40.6569 13 42 14.3431 42 16V37C42 38.6569 40.6569 40 39 40H9C7.34315 40 6 38.6569 6 37V12Z" fill="#CA8A04" stroke="#854D0E" stroke-width="1.5"/>
+  <!-- Folder Front Pocket -->
+  <path d="M6 20C6 18.3431 7.34315 17 9 17H39C40.6569 17 42 18.3431 42 20V37C42 38.6569 40.6569 40 39 40H9C7.34315 40 6 38.6569 6 37V20Z" fill="url(#folderGrad)" stroke="#A16207" stroke-width="1.5"/>
+  <!-- Green Play Arrow Badge -->
+  <circle cx="34" cy="33" r="11" fill="url(#greenPlayGrad)" stroke="#047857" stroke-width="1.5"/>
+  <polygon points="31,27 40,33 31,39" fill="white"/>
 </svg>

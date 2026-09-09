@@ -181,4 +181,111 @@ public class AppViewModelTests
         Assert.Equal("100% Complete", item.StatusText);
         Assert.Equal("Completed", item.TransferRateText);
     }
+
+    [Fact]
+    public void DownloadItemViewModel_DestinationFolder_And_SavePathDisplay_Are_Correct()
+    {
+        string filePath = "/Users/testuser/Downloads/Video/awesome_clip.mp4";
+        var item = new DownloadItemViewModel(Guid.NewGuid(), "https://example.com/clip.mp4", filePath, 5000);
+
+        Assert.Equal("/Users/testuser/Downloads/Video", item.DestinationFolder);
+        Assert.Equal(filePath, item.SavePathDisplay);
+
+        item.DestinationFilePath = "/Users/testuser/Downloads/awesome_clip.mp4";
+        Assert.Equal("/Users/testuser/Downloads", item.DestinationFolder);
+        Assert.Equal("/Users/testuser/Downloads/awesome_clip.mp4", item.SavePathDisplay);
+    }
+
+    [Fact]
+    public void OptionsViewModel_MaxConnections_StepCommands_WorkWithinBounds()
+    {
+        var settingsService = new OmniFetch.Core.Settings.SettingsService(string.Empty);
+        var vm = new OptionsViewModel(settingsService);
+
+        vm.MaxConnections = 8;
+        vm.IncreaseMaxConnections();
+        Assert.Equal(9, vm.MaxConnections);
+
+        vm.DecreaseMaxConnections();
+        Assert.Equal(8, vm.MaxConnections);
+
+        vm.MaxConnections = 32;
+        vm.IncreaseMaxConnections();
+        Assert.Equal(32, vm.MaxConnections); // clamped at 32
+
+        vm.MaxConnections = 1;
+        vm.DecreaseMaxConnections();
+        Assert.Equal(1, vm.MaxConnections); // clamped at 1
+    }
+
+    [Fact]
+    public void OptionsViewModel_ChangingDefaultDownloadDirectory_ImmediatelyUpdatesAllCategoryDirectories()
+    {
+        var settingsService = new OmniFetch.Core.Settings.SettingsService(string.Empty);
+        var vm = new OptionsViewModel(settingsService);
+
+        string newDefault = "/Users/testuser/MyDownloads";
+        vm.DefaultDownloadDirectory = newDefault;
+
+        Assert.Equal(newDefault, vm.DefaultDownloadDirectory);
+        Assert.Equal(Path.Combine(newDefault, "Video"), vm.VideoDirectory);
+        Assert.Equal(Path.Combine(newDefault, "Music"), vm.MusicDirectory);
+        Assert.Equal(Path.Combine(newDefault, "Compressed"), vm.CompressedDirectory);
+        Assert.Equal(Path.Combine(newDefault, "Documents"), vm.DocumentsDirectory);
+        Assert.Equal(Path.Combine(newDefault, "Programs"), vm.ProgramsDirectory);
+    }
+
+    [Fact]
+    public void OmniFetchSettings_UpdateDefaultDownloadDirectory_UpdatesAllCategories()
+    {
+        var settings = new OmniFetch.Core.Settings.OmniFetchSettings();
+        string newRoot = "/Users/testuser/Desktop";
+
+        settings.UpdateDefaultDownloadDirectory(newRoot);
+
+        Assert.Equal(newRoot, settings.DefaultDownloadDirectory);
+        Assert.Equal(newRoot, settings.CategoryDirectories["General"]);
+        Assert.Equal(Path.Combine(newRoot, "Video"), settings.CategoryDirectories["Video"]);
+        Assert.Equal(Path.Combine(newRoot, "Music"), settings.CategoryDirectories["Music"]);
+        Assert.Equal(Path.Combine(newRoot, "Compressed"), settings.CategoryDirectories["Compressed"]);
+        Assert.Equal(Path.Combine(newRoot, "Documents"), settings.CategoryDirectories["Documents"]);
+        Assert.Equal(Path.Combine(newRoot, "Programs"), settings.CategoryDirectories["Programs"]);
+    }
+
+    [Fact]
+    public void DownloadItemViewModel_CanStopAndCanResume_ReflectsStatusCorrectly()
+    {
+        var item = new DownloadItemViewModel(Guid.NewGuid(), "https://example.com/test.mp4", "/path/test.mp4", 1024);
+
+        // Downloading
+        item.SetStatus(DownloadStatus.Downloading);
+        Assert.True(item.CanStop);
+        Assert.False(item.CanResume);
+        Assert.False(item.IsCompleted);
+
+        // Completed
+        item.SetStatus(DownloadStatus.Completed);
+        Assert.False(item.CanStop);
+        Assert.False(item.CanResume);
+        Assert.True(item.IsCompleted);
+
+        // Paused
+        item.SetStatus(DownloadStatus.Paused);
+        Assert.False(item.CanStop);
+        Assert.True(item.CanResume);
+        Assert.False(item.IsCompleted);
+
+        // Queued
+        item.SetStatus(DownloadStatus.Queued);
+        Assert.True(item.CanStop);
+        Assert.True(item.CanResume);
+        Assert.False(item.IsCompleted);
+
+        // Failed
+        item.SetStatus(DownloadStatus.Failed);
+        Assert.False(item.CanStop);
+        Assert.True(item.CanResume);
+        Assert.False(item.IsCompleted);
+    }
 }
+

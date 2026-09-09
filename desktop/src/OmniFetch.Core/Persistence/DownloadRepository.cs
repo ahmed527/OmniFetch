@@ -126,6 +126,19 @@ public class DownloadRepository : IDownloadRepository
         }
     }
 
+    public async Task UpdateJobDestinationAsync(Guid jobId, string newDestinationFilePath, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newDestinationFilePath);
+
+        await using var context = CreateContext();
+        var job = await context.Jobs.FirstOrDefaultAsync(j => j.Id == jobId, ct).ConfigureAwait(false);
+        if (job != null)
+        {
+            job.DestinationFilePath = newDestinationFilePath;
+            await context.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
+    }
+
     public async Task SaveSegmentsAsync(Guid jobId, IEnumerable<DownloadSegmentState> segments, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(segments);

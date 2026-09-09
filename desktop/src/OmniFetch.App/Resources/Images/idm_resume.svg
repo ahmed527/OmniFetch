@@ -1,11 +1,17 @@
 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="resumeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#34D399"/>
-      <stop offset="100%" stop-color="#059669"/>
+      <stop offset="0%" stop-color="#4ADE80"/>
+      <stop offset="40%" stop-color="#22C55E"/>
+      <stop offset="100%" stop-color="#15803D"/>
     </linearGradient>
   </defs>
-  <circle cx="24" cy="24" r="21" fill="url(#resumeGrad)" stroke="#047857" stroke-width="2"/>
-  <polygon points="18,12 36,24 18,36" fill="white"/>
-  <polygon points="19,15 33,24 19,33" fill="#ECFDF5" opacity="0.6"/>
+  <!-- 3D Outer Rim -->
+  <circle cx="24" cy="24" r="22" fill="#166534"/>
+  <circle cx="24" cy="23" r="21" fill="url(#resumeGrad)" stroke="#14532D" stroke-width="1.5"/>
+  <ellipse cx="24" cy="12" rx="14" ry="6" fill="white" opacity="0.35"/>
+  <!-- Play Triangle -->
+  <polygon points="18,13 36,23 18,33" fill="#052E16" transform="translate(0, 1)"/>
+  <polygon points="18,12 36,22 18,32" fill="white"/>
+  <polygon points="19,15 33,22 19,29" fill="#DCFCE7" opacity="0.6"/>
 </svg>

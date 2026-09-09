@@ -5,14 +5,14 @@
     xmlns:vm="clr-namespace:OmniFetch.App.ViewModels"
     x:Class="OmniFetch.App.Views.Dialogs.AddDownloadDialog"
     x:DataType="vm:AddDownloadViewModel"
-    Title="Enter new address to download"
+    Title="Download File Info"
     BackgroundColor="#F1F5F9"
-    WidthRequest="600"
-    HeightRequest="360">
+    WidthRequest="640"
+    HeightRequest="420">
 
     <Grid RowDefinitions="*,Auto" Padding="24" RowSpacing="16">
         <VerticalStackLayout Grid.Row="0" Spacing="14">
-            <Label Text="Enter new address to download" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource IdmPrimaryDark}" />
+            <Label Text="Download File Info" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource IdmPrimaryDark}" />
 
             <!-- URL Input -->
             <VerticalStackLayout Spacing="4">
@@ -21,33 +21,33 @@
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="4" />
                     </Border.StrokeShape>
-                    <Entry Text="{Binding Url, Mode=TwoWay}" Placeholder="https://example.com/file.zip" FontSize="13" />
+                    <Entry Text="{Binding Url, Mode=TwoWay}" Placeholder="https://example.com/file.mp4" FontSize="13" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
                 </Border>
             </VerticalStackLayout>
 
             <!-- Save To Folder -->
             <VerticalStackLayout Spacing="4">
-                <Label Text="Save To Directory:" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Text="Save To Directory:" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmTextSecondary}" />
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Border Grid.Column="0" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="White" Padding="8,4">
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="4" />
                         </Border.StrokeShape>
-                        <Entry Text="{Binding DestinationPath, Mode=TwoWay}" FontSize="13" />
+                        <Entry Text="{Binding DestinationPath, Mode=TwoWay}" FontSize="13" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
                     </Border>
-                    <Button Grid.Column="1" Text="..." Clicked="OnBrowseClicked" WidthRequest="44" Style="{StaticResource IdmSecondaryButton}" />
+                    <Button Grid.Column="1" Text="Browse..." Command="{Binding BrowseFolderCommand}" WidthRequest="90" HeightRequest="34" Style="{StaticResource IdmSecondaryButton}" />
                 </Grid>
             </VerticalStackLayout>
 
             <!-- File Name & Category -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+            <Grid ColumnDefinitions="*,180" ColumnSpacing="12">
                 <VerticalStackLayout Grid.Column="0" Spacing="4">
-                    <Label Text="File Name:" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                    <Label Text="File Name:" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmTextSecondary}" />
                     <Border Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="White" Padding="8,4">
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="4" />
                         </Border.StrokeShape>
-                        <Entry Text="{Binding FileName, Mode=TwoWay}" FontSize="13" />
+                        <Entry Text="{Binding FileName, Mode=TwoWay}" FontSize="13" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
                     </Border>
                 </VerticalStackLayout>
 
@@ -57,7 +57,7 @@
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="4" />
                         </Border.StrokeShape>
-                        <Picker SelectedItem="{Binding Category, Mode=TwoWay}" FontSize="13">
+                        <Picker SelectedItem="{Binding Category, Mode=TwoWay}" FontSize="13" TextColor="#0F172A" TitleColor="#94A3B8">
                             <Picker.ItemsSource>
                                 <x:Array Type="{x:Type x:String}">
                                     <x:String>All</x:String>
@@ -72,12 +72,19 @@
                     </Border>
                 </VerticalStackLayout>
             </Grid>
+
+            <!-- Estimated File Size -->
+            <HorizontalStackLayout Spacing="8">
+                <Label Text="File Size:" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Text="{Binding FileSizeText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmTextPrimary}" />
+            </HorizontalStackLayout>
         </VerticalStackLayout>
 
         <!-- Bottom Action Buttons -->
         <HorizontalStackLayout Grid.Row="1" Spacing="12" HorizontalOptions="End">
-            <Button Text="OK" Command="{Binding OkCommand}" Style="{StaticResource IdmPrimaryButton}" WidthRequest="90" />
-            <Button Text="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource IdmSecondaryButton}" WidthRequest="90" />
+            <Button Text="Start Download" Command="{Binding StartDownloadCommand}" Style="{StaticResource IdmPrimaryButton}" WidthRequest="130" HeightRequest="36" />
+            <Button Text="Download Later" Command="{Binding DownloadLaterCommand}" Style="{StaticResource IdmSecondaryButton}" WidthRequest="130" HeightRequest="36" />
+            <Button Text="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource IdmSecondaryButton}" WidthRequest="90" HeightRequest="36" />
         </HorizontalStackLayout>
     </Grid>
 

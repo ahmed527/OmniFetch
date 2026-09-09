@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.ApplicationModel;
 using OmniFetch.App.Models;
 using OmniFetch.App.Platforms.MacCatalyst;
+using OmniFetch.App.Services;
 using OmniFetch.Core.Common;
 using OmniFetch.Core.Engine;
 using OmniFetch.Core.Exceptions;
@@ -18,6 +19,7 @@ using OmniFetch.Core.Ipc;
 using OmniFetch.Core.Media;
 using OmniFetch.Core.Models;
 using OmniFetch.Core.Persistence;
+using OmniFetch.Core.Settings;
 
 namespace OmniFetch.App.ViewModels;
 
@@ -30,6 +32,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IDownloadRepository? _repository;
     private readonly IActivityLockService? _activityLockService;
     private readonly IHlsDownloadManager? _hlsDownloadManager;
+    private readonly ISettingsService? _settingsService;
 
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _activeTokens = new();
     private IDisposable? _activeTransferLock;
@@ -57,21 +60,26 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private int _activeDownloadsCount;
 
     public Func<Task<AddDownloadParams?>>? RequestAddUrlHandler { get; set; }
+    public Func<NativeDownloadRequest, Task<AddDownloadParams?>>? RequestIpcPromptHandler { get; set; }
     public Func<DownloadItemViewModel, Task>? RequestOpenProgressDialogHandler { get; set; }
+    public Func<Task>? RequestOpenOptionsDialogHandler { get; set; }
     public Func<string, string, Task>? ShowAlertHandler { get; set; }
+    public Func<string, Task<string>>? RequestDeleteConfirmationHandler { get; set; }
 
     public MainViewModel(
         IDownloadEngine engine,
         IIpcServer ipcServer,
         IDownloadRepository? repository = null,
         IActivityLockService? activityLockService = null,
-        IHlsDownloadManager? hlsDownloadManager = null)
+        IHlsDownloadManager? hlsDownloadManager = null,
+        ISettingsService? settingsService = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _ipcServer = ipcServer ?? throw new ArgumentNullException(nameof(ipcServer));
         _repository = repository;
         _activityLockService = activityLockService;
         _hlsDownloadManager = hlsDownloadManager;
+        _settingsService = settingsService;
 
         InitializeCategories();
 
@@ -88,15 +96,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void InitializeCategories()
     {
-        Categories.Add(new CategoryItem("All Downloads", "cat_all.svg", CategoryFilterType.All) { IsSelected = true });
-        Categories.Add(new CategoryItem("Compressed", "cat_compressed.svg", CategoryFilterType.Compressed));
-        Categories.Add(new CategoryItem("Documents", "cat_documents.svg", CategoryFilterType.Documents));
-        Categories.Add(new CategoryItem("Music", "cat_music.svg", CategoryFilterType.Music));
-        Categories.Add(new CategoryItem("Programs", "cat_programs.svg", CategoryFilterType.Programs));
-        Categories.Add(new CategoryItem("Video", "cat_video.svg", CategoryFilterType.Video));
-        Categories.Add(new CategoryItem("Queues", "cat_queues.svg", CategoryFilterType.Queues));
-        Categories.Add(new CategoryItem("Unfinished", "cat_unfinished.svg", CategoryFilterType.Unfinished));
-        Categories.Add(new CategoryItem("Finished", "cat_finished.svg", CategoryFilterType.Finished));
+        Categories.Add(new CategoryItem("All Downloads", "cat_all.png", CategoryFilterType.All) { IsSelected = true });
+        Categories.Add(new CategoryItem("Compressed", "cat_compressed.png", CategoryFilterType.Compressed));
+        Categories.Add(new CategoryItem("Documents", "cat_documents.png", CategoryFilterType.Documents));
+        Categories.Add(new CategoryItem("Music", "cat_music.png", CategoryFilterType.Music));
+        Categories.Add(new CategoryItem("Programs", "cat_programs.png", CategoryFilterType.Programs));
+        Categories.Add(new CategoryItem("Video", "cat_video.png", CategoryFilterType.Video));
+        Categories.Add(new CategoryItem("Queues", "cat_queues.png", CategoryFilterType.Queues));
+        Categories.Add(new CategoryItem("Unfinished", "cat_unfinished.png", CategoryFilterType.Unfinished));
+        Categories.Add(new CategoryItem("Finished", "cat_finished.png", CategoryFilterType.Finished));
 
         SelectedCategory = Categories[0];
     }
@@ -231,11 +239,34 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         try
         {
-            string downloadsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-            string fileName = Path.GetFileName(new Uri(url).AbsolutePath);
-            if (string.IsNullOrWhiteSpace(fileName)) fileName = "download_" + DateTime.Now.Ticks;
+            if (url.StartsWith("blob:", StringComparison.OrdinalIgnoreCase))
+            {
+                if (ShowAlertHandler != null)
+                {
+                    await ShowAlertHandler.Invoke("Unsupported URL", "Browser blob: URLs cannot be transferred directly outside the browser. OmniFetch captures the underlying video stream automatically.");
+                }
+                return null;
+            }
 
-            string destPath = customDestination ?? Path.Combine(downloadsDir, fileName);
+            string fileName = "download_" + DateTime.Now.Ticks;
+            if (Uri.TryCreate(url, UriKind.Absolute, out var parsedUri))
+            {
+                var extracted = Path.GetFileName(parsedUri.AbsolutePath);
+                if (!string.IsNullOrWhiteSpace(extracted))
+                {
+                    fileName = extracted;
+                }
+            }
+
+            fileName = MimeTypeMap.SanitizeAndEnsureExtension(fileName, null, url);
+            var category = DownloadItemViewModel.DeduceCategory(fileName);
+            string defaultCategoryDir = _settingsService?.GetSaveDirectoryForCategory(category.ToString()) ??
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+
+            string destPath = customDestination ?? Path.Combine(defaultCategoryDir, fileName);
+            string targetDir = Path.GetDirectoryName(destPath) ?? defaultCategoryDir;
+            string targetFile = MimeTypeMap.SanitizeAndEnsureExtension(Path.GetFileName(destPath), null, url);
+            destPath = Path.Combine(targetDir, targetFile);
 
             var options = new DownloadOptions
             {
@@ -352,11 +383,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public async Task ResumeAsync()
+    public async Task ResumeAsync(DownloadItemViewModel? item = null)
     {
-        if (SelectedDownload == null || !SelectedDownload.CanResume) return;
+        var download = item ?? SelectedDownload;
+        if (download == null || !download.CanResume) return;
 
-        var download = SelectedDownload;
         download.SetStatus(DownloadStatus.Downloading);
 
         var cts = new CancellationTokenSource();
@@ -365,11 +396,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public async Task StopAsync()
+    public async Task StopAsync(DownloadItemViewModel? item = null)
     {
-        if (SelectedDownload == null || !SelectedDownload.CanPause) return;
+        var download = item ?? SelectedDownload;
+        if (download == null || !download.CanPause) return;
 
-        var download = SelectedDownload;
         if (_activeTokens.TryRemove(download.JobId, out var cts))
         {
             cts.Cancel();
@@ -416,15 +447,44 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public async Task DeleteAsync()
+    public async Task DeleteAsync(DownloadItemViewModel? item = null)
     {
-        if (SelectedDownload == null) return;
+        var download = item ?? SelectedDownload;
+        if (download == null) return;
 
-        var download = SelectedDownload;
+        string choice = "Delete from List & Disk";
+        if (RequestDeleteConfirmationHandler != null)
+        {
+            choice = await RequestDeleteConfirmationHandler.Invoke(download.FileName);
+            if (string.IsNullOrWhiteSpace(choice) || choice.Equals("Cancel", StringComparison.OrdinalIgnoreCase))
+            {
+                return; // User cancelled
+            }
+        }
+
+        bool deleteFromDisk = choice.Contains("Disk", StringComparison.OrdinalIgnoreCase);
+
+        // Cancel active download if currently running
         if (download.IsDownloading && _activeTokens.TryRemove(download.JobId, out var cts))
         {
             cts.Cancel();
             cts.Dispose();
+        }
+
+        // Permanently delete physical file from disk if requested
+        if (deleteFromDisk)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(download.DestinationFilePath) && File.Exists(download.DestinationFilePath))
+                {
+                    File.Delete(download.DestinationFilePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainViewModel.DeleteAsync] Could not delete physical file: {ex.Message}");
+            }
         }
 
         if (_repository != null)
@@ -435,15 +495,47 @@ public partial class MainViewModel : ObservableObject, IDisposable
         AllDownloads.Remove(download);
         ApplyCategoryFilter();
         UpdateCategoryCounts();
-        SelectedDownload = null;
+        if (SelectedDownload == download)
+        {
+            SelectedDownload = null;
+        }
     }
 
     [RelayCommand]
     public async Task DeleteCompletedAsync()
     {
         var completed = AllDownloads.Where(d => d.Status == DownloadStatus.Completed).ToList();
+        if (completed.Count == 0) return;
+
+        string choice = "Delete from List & Disk";
+        if (RequestDeleteConfirmationHandler != null)
+        {
+            choice = await RequestDeleteConfirmationHandler.Invoke($"{completed.Count} completed downloads");
+            if (string.IsNullOrWhiteSpace(choice) || choice.Equals("Cancel", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
+        bool deleteFromDisk = choice.Contains("Disk", StringComparison.OrdinalIgnoreCase);
+
         foreach (var d in completed)
         {
+            if (deleteFromDisk)
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(d.DestinationFilePath) && File.Exists(d.DestinationFilePath))
+                    {
+                        File.Delete(d.DestinationFilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[MainViewModel.DeleteCompletedAsync] Could not delete file {d.DestinationFilePath}: {ex.Message}");
+                }
+            }
+
             if (_repository != null)
             {
                 await _repository.DeleteJobAsync(d.JobId);
@@ -453,43 +545,49 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         ApplyCategoryFilter();
         UpdateCategoryCounts();
+        SelectedDownload = null;
     }
 
     [RelayCommand]
-    public async Task OpenFolderAsync()
+    public void RevealInFinder(DownloadItemViewModel? item = null)
     {
-        if (SelectedDownload == null) return;
+        var target = item ?? SelectedDownload;
+        if (target == null) return;
 
-        string path = SelectedDownload.DestinationFilePath;
+        FolderPickerHelper.RevealInFinder(target.DestinationFilePath);
+    }
+
+    [RelayCommand]
+    public void OpenFolder(DownloadItemViewModel? item = null)
+    {
+        var target = item ?? SelectedDownload;
+        if (target == null) return;
+
+        string path = target.DestinationFilePath;
         string? folder = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
+        if (!string.IsNullOrEmpty(folder))
         {
-            await Launcher.OpenAsync(new OpenFileRequest
-            {
-                File = new ReadOnlyFile(Directory.Exists(path) ? path : folder)
-            });
+            FolderPickerHelper.OpenFolder(folder);
         }
     }
 
     [RelayCommand]
-    public async Task OpenFileAsync()
+    public void OpenFile(DownloadItemViewModel? item = null)
     {
-        if (SelectedDownload == null) return;
+        var target = item ?? SelectedDownload;
+        if (target == null) return;
 
-        string path = SelectedDownload.DestinationFilePath;
-        if (File.Exists(path))
-        {
-            await Launcher.OpenAsync(new OpenFileRequest
-            {
-                File = new ReadOnlyFile(path)
-            });
-        }
+        FolderPickerHelper.OpenFile(target.DestinationFilePath);
     }
 
     [RelayCommand]
     public async Task OptionsAsync()
     {
-        if (ShowAlertHandler != null)
+        if (RequestOpenOptionsDialogHandler != null)
+        {
+            await RequestOpenOptionsDialogHandler.Invoke();
+        }
+        else if (ShowAlertHandler != null)
         {
             await ShowAlertHandler.Invoke("OmniFetch Options", "OmniFetch is configured with maximum 8 parallel streams per download, lock-free zero-stitch direct disk I/O, and Chrome extension integration enabled.");
         }
@@ -587,11 +685,30 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             try
             {
+                var settings = _settingsService?.GetSettings() ?? new OmniFetchSettings();
+
+                string sanitizedFileName = MimeTypeMap.SanitizeAndEnsureExtension(request.SuggestedFileName, request.MimeType, request.Url);
+                var category = DownloadItemViewModel.DeduceCategory(sanitizedFileName);
+                string targetDir = _settingsService?.GetSaveDirectoryForCategory(category.ToString()) ?? settings.DefaultDownloadDirectory;
+
                 string? customDest = null;
-                if (!string.IsNullOrWhiteSpace(request.SuggestedFileName))
+
+                if (settings.ShowStartDialog && RequestIpcPromptHandler != null)
                 {
-                    string downloadsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-                    customDest = Path.Combine(downloadsDir, request.SuggestedFileName);
+                    var promptResult = await RequestIpcPromptHandler.Invoke(request);
+                    if (promptResult == null)
+                    {
+                        return IpcResponse.Error("CANCELLED", "Download cancelled by user");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(promptResult.DestinationPath) && !string.IsNullOrWhiteSpace(promptResult.FileName))
+                    {
+                        customDest = Path.Combine(promptResult.DestinationPath, promptResult.FileName);
+                    }
+                }
+                else
+                {
+                    customDest = Path.Combine(targetDir, sanitizedFileName);
                 }
 
                 var item = await StartNewDownloadUrlAsync(
@@ -612,6 +729,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 return IpcResponse.Error("INTERNAL_ERROR", ex.Message);
             }
         });
+    }
+
+    public async Task UpdateDownloadPathAsync(Guid jobId, string newFilePath)
+    {
+        try
+        {
+            if (_repository != null)
+            {
+                await _repository.UpdateJobDestinationAsync(jobId, newFilePath).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MainViewModel.UpdateDownloadPathAsync] Error: {ex.Message}");
+        }
     }
 
     private Task<IpcResponse> HandleIpcRefreshUrlAsync(NativeRefreshUrlRequest request)

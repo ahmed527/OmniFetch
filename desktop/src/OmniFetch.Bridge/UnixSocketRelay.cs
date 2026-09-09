@@ -30,6 +30,7 @@ public static class UnixSocketRelay
 
         if (!File.Exists(path))
         {
+            BridgeLogger.LogError($"Daemon offline: socket file '{path}' does not exist.");
             var fallback = new BridgeResponse
             {
                 Status = "error",
@@ -77,6 +78,7 @@ public static class UnixSocketRelay
         }
         catch (SocketException ex)
         {
+            BridgeLogger.LogError($"Socket connection refused to daemon at {path}", ex);
             var err = new BridgeResponse
             {
                 Status = "error",
@@ -87,6 +89,7 @@ public static class UnixSocketRelay
         }
         catch (EndOfStreamException ex)
         {
+            BridgeLogger.LogError("Daemon closed connection prematurely", ex);
             var err = new BridgeResponse
             {
                 Status = "error",
@@ -97,6 +100,7 @@ public static class UnixSocketRelay
         }
         catch (IOException ex)
         {
+            BridgeLogger.LogError("I/O error communicating with daemon", ex);
             var err = new BridgeResponse
             {
                 Status = "error",
@@ -107,6 +111,7 @@ public static class UnixSocketRelay
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
+            BridgeLogger.LogError("Connection to daemon timed out");
             var err = new BridgeResponse
             {
                 Status = "error",

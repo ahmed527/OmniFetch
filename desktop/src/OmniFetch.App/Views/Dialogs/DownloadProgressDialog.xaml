@@ -18,7 +18,7 @@
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="6" />
             </Border.StrokeShape>
-            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="12">
+            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="12">
                 <Label Grid.Row="0" Grid.Column="0" Text="File Name:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
                 <Label Grid.Row="0" Grid.Column="1" Text="{Binding Download.FileName}" FontAttributes="Bold" FontSize="13" TextColor="{StaticResource IdmTextPrimary}" LineBreakMode="MiddleTruncation" />
 
@@ -36,6 +36,13 @@
 
                 <Label Grid.Row="5" Grid.Column="0" Text="Time Left:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
                 <Label Grid.Row="5" Grid.Column="1" Text="{Binding Download.TimeLeftText}" FontSize="12" TextColor="{StaticResource IdmTextPrimary}" />
+
+                <Label Grid.Row="6" Grid.Column="0" Text="Save To:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+                <Grid Grid.Row="6" Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" VerticalOptions="Center">
+                    <Label Grid.Column="0" Text="{Binding SaveToPath}" FontSize="12" TextColor="{StaticResource IdmPrimaryDark}" LineBreakMode="MiddleTruncation" VerticalOptions="Center" />
+                    <Button Grid.Column="1" Text="Show in Finder" Command="{Binding OpenFolderCommand}" Style="{StaticResource IdmSecondaryButton}" HeightRequest="26" FontSize="11" Padding="8,0" />
+                    <Button Grid.Column="2" Text="Change..." Command="{Binding ChangeLocationCommand}" IsVisible="{Binding CanChangeLocation}" Style="{StaticResource IdmSecondaryButton}" HeightRequest="26" FontSize="11" Padding="8,0" />
+                </Grid>
             </Grid>
         </Border>
 
@@ -99,9 +106,10 @@
                     Text="{Binding PauseResumeText}" 
                     Clicked="OnPauseResumeClicked"
                     Style="{StaticResource IdmSecondaryButton}" 
-                    WidthRequest="90" />
-            <Button Grid.Column="3" Text="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource IdmSecondaryButton}" WidthRequest="80" />
-            <Button Grid.Column="4" Text="Hide" Command="{Binding HideCommand}" Style="{StaticResource IdmPrimaryButton}" WidthRequest="80" />
+                    WidthRequest="90" 
+                    HeightRequest="34" />
+            <Button Grid.Column="3" Text="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource IdmSecondaryButton}" WidthRequest="80" HeightRequest="34" />
+            <Button Grid.Column="4" Text="Hide" Command="{Binding HideCommand}" Style="{StaticResource IdmPrimaryButton}" WidthRequest="80" HeightRequest="34" />
         </Grid>
     </Grid>
 

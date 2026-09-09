@@ -5,40 +5,53 @@
     x:Class="OmniFetch.App.Views.Controls.ToolbarButton"
     x:Name="ThisButton">
 
-    <Border 
-        x:Name="ButtonBorder"
-        BackgroundColor="Transparent"
-        Stroke="Transparent"
-        StrokeThickness="1"
-        Padding="6,4"
-        Margin="2,0"
-        WidthRequest="72">
-        <Border.StrokeShape>
-            <RoundRectangle CornerRadius="4" />
-        </Border.StrokeShape>
+    <Grid WidthRequest="72" Margin="2,0">
+        <!-- Visual Presentation Layer -->
+        <Border 
+            x:Name="ButtonBorder"
+            BackgroundColor="Transparent"
+            Stroke="Transparent"
+            StrokeThickness="1"
+            Padding="6,4"
+            InputTransparent="True">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="4" />
+            </Border.StrokeShape>
 
-        <Border.GestureRecognizers>
-            <TapGestureRecognizer 
-                Command="{Binding Command, Source={x:Reference ThisButton}}" 
-                CommandParameter="{Binding CommandParameter, Source={x:Reference ThisButton}}" />
-            <PointerGestureRecognizer 
-                PointerEntered="OnPointerEntered" 
-                PointerExited="OnPointerExited" />
-        </Border.GestureRecognizers>
+            <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True">
+                <Image 
+                    x:Name="BtnImage"
+                    Source="{Binding IconSource, Source={x:Reference ThisButton}}" 
+                    WidthRequest="28" 
+                    HeightRequest="28" 
+                    Aspect="AspectFit" 
+                    HorizontalOptions="Center"
+                    InputTransparent="True" />
+                <Label 
+                    x:Name="BtnLabel"
+                    Text="{Binding Text, Source={x:Reference ThisButton}}" 
+                    Style="{DynamicResource IdmToolbarButtonLabel}" 
+                    HorizontalOptions="Center"
+                    LineBreakMode="NoWrap"
+                    InputTransparent="True" />
+            </VerticalStackLayout>
+        </Border>
 
-        <VerticalStackLayout Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-            <Image 
-                Source="{Binding IconSource, Source={x:Reference ThisButton}}" 
-                WidthRequest="28" 
-                HeightRequest="28" 
-                Aspect="AspectFit" 
-                HorizontalOptions="Center" />
-            <Label 
-                Text="{Binding Text, Source={x:Reference ThisButton}}" 
-                Style="{DynamicResource IdmToolbarButtonLabel}" 
-                HorizontalOptions="Center"
-                LineBreakMode="NoWrap" />
-        </VerticalStackLayout>
-    </Border>
-
+        <!-- Native Click Layer (Covers 100% of toolbar button surface) -->
+        <Button 
+            x:Name="NativeButton"
+            BackgroundColor="Transparent"
+            BorderColor="Transparent"
+            BorderWidth="0"
+            CornerRadius="4"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill"
+            Clicked="OnNativeButtonClicked">
+            <Button.GestureRecognizers>
+                <PointerGestureRecognizer 
+                    PointerEntered="OnPointerEntered" 
+                    PointerExited="OnPointerExited" />
+            </Button.GestureRecognizers>
+        </Button>
+    </Grid>
 </ContentView>

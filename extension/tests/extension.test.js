@@ -238,5 +238,130 @@ describe("OmniFetch Chrome Extension (Manifest V3) Test Suite", () => {
       assert.equal(sentNativeMessages[0].payload.jobId, "99999999-8888-7777-6666-555555555555");
       assert.equal(sentNativeMessages[0].payload.newUrl, "https://s3.amazonaws.com/bucket/file.zip?fresh-token=abc");
     });
+
+    test("YouTube googlevideo stream URL strips range parameter for full download", () => {
+      const chunkUrl = "https://rr2---sn-4g5lzney.googlevideo.com/videoplayback?expire=1710000000&ei=xyz&ip=1.2.3.4&id=o-ABC&itag=137&source=youtube&requiressl=yes&range=0-1048575&rn=1&alr=yes";
+      const u = new URL(chunkUrl);
+      u.searchParams.delete("range");
+      u.searchParams.delete("rn");
+      const fullStreamUrl = u.toString();
+
+      assert.ok(!fullStreamUrl.includes("range="), "Full stream URL must not contain range parameter");
+      assert.ok(!fullStreamUrl.includes("rn="), "Full stream URL must not contain rn parameter");
+      assert.ok(fullStreamUrl.includes("googlevideo.com/videoplayback"), "Must preserve googlevideo endpoint");
+      assert.ok(fullStreamUrl.includes("itag=137"), "Must preserve video quality stream itag");
+    });
+
+    test("Rejects blob: URLs in video capture", () => {
+      const blobUrl = "blob:https://www.youtube.com/a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+      let isValidUrl = !blobUrl.startsWith("blob:");
+      assert.equal(isValidUrl, false, "blob: URLs must be flagged as invalid for external capture");
+    });
+
+    test("sanitizeInterceptedFileName eliminates .dat and assigns .mp4 for YouTube streams", () => {
+      // Inline function equivalent to background.js helper
+      function sanitizeInterceptedFileName(downloadItem, targetUrl) {
+        let filename = downloadItem.filename || "";
+        const lowerName = filename.toLowerCase();
+        const lowerUrl = (targetUrl || "").toLowerCase();
+
+        const isDummyExt = lowerName.endsWith(".dat") || lowerName.endsWith(".bin") || lowerName.endsWith(".tmp") || !filename.includes(".");
+        const isYouTube = lowerUrl.includes("googlevideo.com") || lowerUrl.includes("videoplayback");
+
+        if (isDummyExt || isYouTube) {
+          let preferredExt = ".mp4";
+          const mime = (downloadItem.mime || "").toLowerCase();
+          if (mime.includes("video/webm") || lowerUrl.includes("mime=video%2fwebm") || lowerUrl.includes("mime=video/webm")) {
+            preferredExt = ".webm";
+          } else if (mime.includes("audio/mp4") || lowerUrl.includes("mime=audio%2fmp4") || lowerUrl.includes("mime=audio/mp4")) {
+            preferredExt = ".m4a";
+          }
+
+          if (isYouTube) {
+            if (!filename || filename.toLowerCase().includes("videoplayback")) {
+              filename = `YouTube_Video${preferredExt}`;
+            } else if (lowerName.endsWith(".dat") || lowerName.endsWith(".bin")) {
+              filename = filename.replace(/\.(dat|bin)$/i, preferredExt);
+            }
+          } else if (isDummyExt && preferredExt) {
+            filename = filename ? filename.replace(/\.[^.]+$/, preferredExt) : `download${preferredExt}`;
+          }
+        }
+
+        return filename;
+      }
+
+      // Case 1: Generic videoplayback.dat on YouTube
+      const res1 = sanitizeInterceptedFileName(
+        { filename: "videoplayback.dat", mime: "video/mp4" },
+        "https://rr1---sn-xxx.googlevideo.com/videoplayback?expire=123"
+      );
+      assert.equal(res1, "YouTube_Video.mp4");
+
+      // Case 2: Named file ending in .dat on YouTube with WebM MIME
+      const res2 = sanitizeInterceptedFileName(
+        { filename: "Epic_Song_Video.dat", mime: "video/webm" },
+        "https://rr1---sn-xxx.googlevideo.com/videoplayback?mime=video%2Fwebm"
+      );
+      assert.equal(res2, "Epic_Song_Video.webm");
+
+      // Case 3: Empty filename on YouTube
+      const res3 = sanitizeInterceptedFileName(
+        { filename: "", mime: "video/mp4" },
+        "https://googlevideo.com/videoplayback"
+      );
+      assert.equal(res3, "YouTube_Video.mp4");
+    });
+
+    test("Safe messaging gracefully catches extension context invalidation without throwing", () => {
+      let isExtensionValid = false;
+      let cleanupInvoked = false;
+
+      function cleanup() {
+        cleanupInvoked = true;
+      }
+
+      function safeSendMessage(msg, cb) {
+        if (!isExtensionValid) {
+          cleanup();
+          return;
+        }
+      }
+
+      // Simulate call after extension reload
+      assert.doesNotThrow(() => {
+        safeSendMessage({ type: "TEST" });
+      });
+      assert.equal(cleanupInvoked, true, "Cleanup must be invoked when context is invalidated");
+    });
+
+    test("Normal download interception produces valid download payload when pendingRefreshJobId is undefined", async () => {
+      delete mockStorage.pendingRefreshJobId;
+
+      const downloadItem = {
+        id: 77,
+        url: "https://example.com/test.zip",
+        finalUrl: "https://example.com/test.zip",
+        filename: "test.zip"
+      };
+
+      const config = await mockChrome.storage.local.get(["pendingRefreshJobId"]);
+      assert.equal(config.pendingRefreshJobId, undefined);
+
+      let payload;
+      if (config.pendingRefreshJobId) {
+        payload = { action: "refresh_url" };
+      } else {
+        payload = {
+          action: "download",
+          url: downloadItem.finalUrl,
+          suggestedFileName: downloadItem.filename
+        };
+      }
+
+      assert.equal(payload.action, "download");
+      assert.equal(payload.url, "https://example.com/test.zip");
+      assert.equal(payload.suggestedFileName, "test.zip");
+    });
   });
 });

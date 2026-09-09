@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using OmniFetch.App.ViewModels;
 
@@ -11,25 +12,40 @@ public partial class AddDownloadDialog : ContentPage
     public AddDownloadDialog(AddDownloadViewModel viewModel)
     {
         InitializeComponent();
-        BindingContext = _viewModel = viewModel;
+        BindingContext = _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _viewModel.RequestCloseHandler = async () =>
         {
-            await Navigation.PopModalAsync();
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                try
+                {
+                    if (Navigation.ModalStack.Count > 0)
+                    {
+                        await Navigation.PopModalAsync(true);
+                    }
+                }
+                catch
+                {
+                    try
+                    {
+                        var nav = Application.Current?.Windows.Count > 0 ? Application.Current.Windows[0].Page?.Navigation : null;
+                        if (nav != null && nav.ModalStack.Count > 0)
+                        {
+                            await nav.PopModalAsync(true);
+                        }
+                    }
+                    catch { /* Ignore */ }
+                }
+            });
         };
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await _viewModel.CheckClipboardForUrlAsync();
-    }
-
-    private void OnBrowseClicked(object? sender, EventArgs e)
-    {
-        // Keep current path or set standard downloads
-        if (string.IsNullOrWhiteSpace(_viewModel.DestinationPath))
+        if (string.IsNullOrWhiteSpace(_viewModel.Url))
         {
-            _viewModel.DestinationPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "/Downloads";
+            await _viewModel.CheckClipboardForUrlAsync();
         }
     }
 }

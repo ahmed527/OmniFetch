@@ -96,6 +96,7 @@ public static class Program
         }
         catch (Exception ex)
         {
+            BridgeLogger.LogError("Bridge encountered unhandled exception", ex);
             var err = new BridgeResponse
             {
                 Status = "error",

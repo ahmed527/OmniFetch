@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:OmniFetch.App.ViewModels"
+    x:Class="OmniFetch.App.Views.Dialogs.OptionsDialog"
+    x:DataType="vm:OptionsViewModel"
+    Title="OmniFetch Configuration"
+    BackgroundColor="#F1F5F9"
+    WidthRequest="660"
+    HeightRequest="600">
+
+    <Grid RowDefinitions="*,Auto" Padding="20" RowSpacing="14">
+        
+        <!-- Main Scrollable Settings Content -->
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="16">
+                
+                <!-- Section 1: Save To Locations -->
+                <Border Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="White" Padding="16">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="6" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="Save To Locations" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource IdmPrimaryDark}" />
+                        
+                        <!-- Default Folder -->
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Default Download Directory:" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmTextSecondary}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Border Grid.Column="0" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="#F8FAFC" Padding="8,4">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                    <Entry Text="{Binding DefaultDownloadDirectory, Mode=TwoWay}" FontSize="12" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
+                                </Border>
+                                <Button Grid.Column="1" Text="Browse..." Command="{Binding BrowseDefaultDirectoryCommand}" Style="{StaticResource IdmSecondaryButton}" HeightRequest="32" />
+                            </Grid>
+                        </VerticalStackLayout>
+
+                        <!-- Video Category Folder -->
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Video Downloads Directory:" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Border Grid.Column="0" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="#F8FAFC" Padding="8,4">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                    <Entry Text="{Binding VideoDirectory, Mode=TwoWay}" FontSize="12" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
+                                </Border>
+                                <Button Grid.Column="1" Text="Browse..." Command="{Binding BrowseVideoDirectoryCommand}" Style="{StaticResource IdmSecondaryButton}" HeightRequest="32" />
+                            </Grid>
+                        </VerticalStackLayout>
+
+                        <!-- Music Category Folder -->
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Music Downloads Directory:" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Border Grid.Column="0" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="#F8FAFC" Padding="8,4">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                    <Entry Text="{Binding MusicDirectory, Mode=TwoWay}" FontSize="12" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
+                                </Border>
+                                <Button Grid.Column="1" Text="Browse..." Command="{Binding BrowseMusicDirectoryCommand}" Style="{StaticResource IdmSecondaryButton}" HeightRequest="32" />
+                            </Grid>
+                        </VerticalStackLayout>
+
+                        <!-- Compressed Category Folder -->
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Compressed / Archives Directory:" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Border Grid.Column="0" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="#F8FAFC" Padding="8,4">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                    <Entry Text="{Binding CompressedDirectory, Mode=TwoWay}" FontSize="12" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
+                                </Border>
+                                <Button Grid.Column="1" Text="Browse..." Command="{Binding BrowseCompressedDirectoryCommand}" Style="{StaticResource IdmSecondaryButton}" HeightRequest="32" />
+                            </Grid>
+                        </VerticalStackLayout>
+
+                        <!-- Documents Category Folder -->
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Documents Directory:" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Border Grid.Column="0" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="#F8FAFC" Padding="8,4">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                    <Entry Text="{Binding DocumentsDirectory, Mode=TwoWay}" FontSize="12" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
+                                </Border>
+                                <Button Grid.Column="1" Text="Browse..." Command="{Binding BrowseDocumentsDirectoryCommand}" Style="{StaticResource IdmSecondaryButton}" HeightRequest="32" />
+                            </Grid>
+                        </VerticalStackLayout>
+
+                        <!-- Programs Category Folder -->
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Programs / Installers Directory:" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Border Grid.Column="0" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="#F8FAFC" Padding="8,4">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                    <Entry Text="{Binding ProgramsDirectory, Mode=TwoWay}" FontSize="12" TextColor="#0F172A" PlaceholderColor="#94A3B8" />
+                                </Border>
+                                <Button Grid.Column="1" Text="Browse..." Command="{Binding BrowseProgramsDirectoryCommand}" Style="{StaticResource IdmSecondaryButton}" HeightRequest="32" />
+                            </Grid>
+                        </VerticalStackLayout>
+
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Section 2: Dialog Prompts -->
+                <Border Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="White" Padding="16">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="6" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Download Dialogs &amp; Prompts" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource IdmPrimaryDark}" />
+
+                        <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                            <CheckBox IsChecked="{Binding ShowStartDialog, Mode=TwoWay}" VerticalOptions="Center" />
+                            <Label Text="Show Start Download (Download File Info) dialog before starting" FontSize="13" TextColor="{StaticResource IdmTextPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                            <CheckBox IsChecked="{Binding ShowCompleteDialog, Mode=TwoWay}" VerticalOptions="Center" />
+                            <Label Text="Show Download Complete dialog when download finishes" FontSize="13" TextColor="{StaticResource IdmTextPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Section 3: Connection & Streams -->
+                <Border Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="White" Padding="16">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="6" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Connection &amp; Speed" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource IdmPrimaryDark}" />
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                <Label Text="Max Connections Number:" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource IdmTextPrimary}" />
+                                <Label Text="High-speed dynamic byte-range half-splitting streams" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" />
+                            </VerticalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                <Button Text="-" Command="{Binding DecreaseMaxConnectionsCommand}" Style="{StaticResource IdmSecondaryButton}" WidthRequest="32" HeightRequest="30" Padding="0" FontSize="14" FontAttributes="Bold" />
+                                <Border Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="#F8FAFC" Padding="8,4" VerticalOptions="Center">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                    <Label Text="{Binding MaxConnections}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource IdmPrimaryDark}" WidthRequest="28" HorizontalTextAlignment="Center" VerticalOptions="Center" />
+                                </Border>
+                                <Button Text="+" Command="{Binding IncreaseMaxConnectionsCommand}" Style="{StaticResource IdmSecondaryButton}" WidthRequest="32" HeightRequest="30" Padding="0" FontSize="14" FontAttributes="Bold" />
+                                <Slider Value="{Binding MaxConnections, Mode=TwoWay}" Minimum="1" Maximum="32" WidthRequest="110" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Bottom Actions -->
+        <HorizontalStackLayout Grid.Row="1" Spacing="12" HorizontalOptions="End">
+            <Button Text="OK" Command="{Binding SaveCommand}" Clicked="OnOkClicked" Style="{StaticResource IdmPrimaryButton}" WidthRequest="90" HeightRequest="36" />
+            <Button Text="Cancel" Command="{Binding CancelCommand}" Clicked="OnCancelClicked" Style="{StaticResource IdmSecondaryButton}" WidthRequest="90" HeightRequest="36" />
+        </HorizontalStackLayout>
+
+    </Grid>
+
+</ContentPage>

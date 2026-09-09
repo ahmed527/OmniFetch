@@ -34,6 +34,11 @@ public interface IDownloadRepository
     Task UpdateJobUrlAsync(Guid jobId, string newUrl, string? cookies = null, CancellationToken ct = default);
 
     /// <summary>
+    /// Updates the destination file path of a download job.
+    /// </summary>
+    Task UpdateJobDestinationAsync(Guid jobId, string newDestinationFilePath, CancellationToken ct = default);
+
+    /// <summary>
     /// Synchronizes the complete segment topology for a job (e.g. after bisection or initial setup).
     /// </summary>
     Task SaveSegmentsAsync(Guid jobId, IEnumerable<DownloadSegmentState> segments, CancellationToken ct = default);

@@ -35,6 +35,16 @@ public partial class DownloadItemViewModel : ObservableObject
     [ObservableProperty]
     private string _destinationFilePath = string.Empty;
 
+    public string DestinationFolder => Path.GetDirectoryName(DestinationFilePath) ?? string.Empty;
+
+    public string SavePathDisplay => string.IsNullOrWhiteSpace(DestinationFilePath) ? "Default" : DestinationFilePath;
+
+    partial void OnDestinationFilePathChanged(string value)
+    {
+        OnPropertyChanged(nameof(DestinationFolder));
+        OnPropertyChanged(nameof(SavePathDisplay));
+    }
+
     [ObservableProperty]
     private long _totalBytes = -1;
 
@@ -88,6 +98,8 @@ public partial class DownloadItemViewModel : ObservableObject
     public bool IsDownloading => Status == DownloadStatus.Downloading;
     public bool CanResume => Status is DownloadStatus.Paused or DownloadStatus.Failed or DownloadStatus.Expired or DownloadStatus.Queued;
     public bool CanPause => Status == DownloadStatus.Downloading;
+    public bool CanStop => Status is DownloadStatus.Downloading or DownloadStatus.Queued;
+    public bool IsCompleted => Status == DownloadStatus.Completed;
 
     public DownloadItemViewModel(Guid jobId, string url, string destinationPath, long totalBytes = -1)
     {
@@ -210,6 +222,8 @@ public partial class DownloadItemViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDownloading));
         OnPropertyChanged(nameof(CanResume));
         OnPropertyChanged(nameof(CanPause));
+        OnPropertyChanged(nameof(CanStop));
+        OnPropertyChanged(nameof(IsCompleted));
     }
 
     public static string FormatBytes(double bytes)

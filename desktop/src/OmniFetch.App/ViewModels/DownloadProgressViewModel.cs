@@ -1,9 +1,11 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OmniFetch.App.Models;
+using OmniFetch.App.Services;
 using OmniFetch.Core.Common;
 
 namespace OmniFetch.App.ViewModels;
@@ -29,6 +31,10 @@ public partial class DownloadProgressViewModel : ObservableObject
 
     public string PauseResumeText => Download.IsDownloading ? "Pause" : "Resume";
 
+    public string SaveToPath => Download.DestinationFilePath;
+
+    public bool CanChangeLocation => !Download.IsDownloading;
+
     public Func<Task>? RequestCloseHandler { get; set; }
 
     public ObservableCollection<SegmentDisplayItem> Segments => Download.Segments;
@@ -47,6 +53,11 @@ public partial class DownloadProgressViewModel : ObservableObject
             if (e.PropertyName is nameof(Download.IsDownloading) or nameof(Download.Status))
             {
                 OnPropertyChanged(nameof(PauseResumeText));
+                OnPropertyChanged(nameof(CanChangeLocation));
+            }
+            if (e.PropertyName is nameof(Download.DestinationFilePath))
+            {
+                OnPropertyChanged(nameof(SaveToPath));
             }
         };
     }
@@ -54,6 +65,42 @@ public partial class DownloadProgressViewModel : ObservableObject
     private void UpdateTitle()
     {
         DialogTitle = $"{Download.ProgressPercentage:F1}% - {Download.FileName}";
+    }
+
+    [RelayCommand]
+    public void OpenFolder()
+    {
+        FolderPickerHelper.RevealInFinder(Download.DestinationFilePath);
+    }
+
+    [RelayCommand]
+    public async Task ChangeLocationAsync()
+    {
+        if (Download.IsDownloading) return;
+
+        string currentDir = Path.GetDirectoryName(Download.DestinationFilePath) ?? string.Empty;
+        string? pickedDir = await FolderPickerHelper.PickFolderAsync(currentDir);
+        if (!string.IsNullOrWhiteSpace(pickedDir) && !string.Equals(pickedDir, currentDir, StringComparison.OrdinalIgnoreCase))
+        {
+            string fileName = Download.FileName;
+            string newFilePath = Path.Combine(pickedDir, fileName);
+
+            try
+            {
+                if (File.Exists(Download.DestinationFilePath))
+                {
+                    File.Move(Download.DestinationFilePath, newFilePath, overwrite: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DownloadProgressViewModel] Could not move file on disk: {ex.Message}");
+            }
+
+            Download.DestinationFilePath = newFilePath;
+            OnPropertyChanged(nameof(SaveToPath));
+            await _mainViewModel.UpdateDownloadPathAsync(Download.JobId, newFilePath);
+        }
     }
 
     [RelayCommand]
@@ -68,6 +115,7 @@ public partial class DownloadProgressViewModel : ObservableObject
             await _mainViewModel.ResumeCommand.ExecuteAsync(null);
         }
         OnPropertyChanged(nameof(PauseResumeText));
+        OnPropertyChanged(nameof(CanChangeLocation));
     }
 
     [RelayCommand]

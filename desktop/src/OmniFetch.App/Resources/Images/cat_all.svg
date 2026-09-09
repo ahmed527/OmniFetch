@@ -1,3 +1,10 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M3 6C3 4.89543 3.89543 4 5 4H9.58579C10.1163 4 10.6251 4.21071 11 4.58579L12.4142 6H19C20.1046 6 21 6.89543 21 8V18C21 19.1046 20.1046 20 19 20H5C3.89543 20 3 19.1046 3 18V6Z" fill="#FBBF24" stroke="#D97706" stroke-width="1.5"/>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="catAllGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <path d="M3 8C3 6.89543 3.89543 6 5 6H12L15 9H27C28.1046 9 29 9.89543 29 11V25C29 26.1046 28.1046 27 27 27H5C3.89543 27 3 26.1046 3 25V8Z" fill="url(#catAllGrad)" stroke="#1D4ED8" stroke-width="1.2"/>
+  <path d="M3 13H29" stroke="#93C5FD" stroke-width="1"/>
 </svg>

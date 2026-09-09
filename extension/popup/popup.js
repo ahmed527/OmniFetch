@@ -42,22 +42,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     statusText.textContent = "Checking...";
 
     const startTime = performance.now();
-    chrome.runtime.sendMessage({ type: "PING_DAEMON" }, (res) => {
-      const elapsed = Math.round(performance.now() - startTime);
+    try {
+      const p = chrome.runtime.sendMessage({ type: "PING_DAEMON" }, (res) => {
+        if (chrome.runtime?.lastError) {
+          connectionBadge.className = "status-badge status-offline";
+          statusText.textContent = "Daemon Offline";
+          diagnosticsOutput.textContent = `Offline: ${chrome.runtime.lastError.message || "Native host unavailable"}`;
+          diagnosticsOutput.className = "diagnostics-text diag-warning";
+          return;
+        }
 
-      if (res && res.success && res.data && res.data.status === "ok") {
-        connectionBadge.className = "status-badge status-connected";
-        statusText.textContent = "Connected";
-        diagnosticsOutput.textContent = `OmniFetch daemon online (${elapsed} ms latency)`;
-        diagnosticsOutput.className = "diagnostics-text diag-success";
-      } else {
-        connectionBadge.className = "status-badge status-offline";
-        statusText.textContent = "Daemon Offline";
-        const msg = res && res.error ? res.error : "Desktop app not running";
-        diagnosticsOutput.textContent = `Offline: ${msg}`;
-        diagnosticsOutput.className = "diagnostics-text diag-warning";
+        const elapsed = Math.round(performance.now() - startTime);
+
+        if (res && res.success && res.data && res.data.status === "ok") {
+          connectionBadge.className = "status-badge status-connected";
+          statusText.textContent = "Connected";
+          diagnosticsOutput.textContent = `OmniFetch daemon online (${elapsed} ms latency)`;
+          diagnosticsOutput.className = "diagnostics-text diag-success";
+        } else {
+          connectionBadge.className = "status-badge status-offline";
+          statusText.textContent = "Daemon Offline";
+          const msg = res && res.error ? res.error : "Desktop app not running";
+          diagnosticsOutput.textContent = `Offline: ${msg}`;
+          diagnosticsOutput.className = "diagnostics-text diag-warning";
+        }
+      });
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {});
       }
-    });
+    } catch (err) {}
   }
 
   btnTestConnection.addEventListener("click", () => {

@@ -1,8 +1,15 @@
 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Rear octagon -->
-  <polygon points="22,3 36,3 45,12 45,26 36,35 22,35 13,26 13,12" fill="#DC2626" opacity="0.6" stroke="#991B1B" stroke-width="1.5"/>
-  <rect x="23" y="13" width="12" height="12" rx="1.5" fill="white" opacity="0.8"/>
-  <!-- Front octagon -->
-  <polygon points="13,13 27,13 37,23 37,37 27,47 13,47 3,37 3,23" fill="#EF4444" stroke="#991B1B" stroke-width="2"/>
-  <rect x="14" y="24" width="12" height="12" rx="1.5" fill="white"/>
+  <defs>
+    <linearGradient id="stopAllGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F87171"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </linearGradient>
+  </defs>
+  <!-- Back Stop Sign -->
+  <polygon points="22,4 34,4 43,13 43,25 34,34 22,34 13,25 13,13" fill="url(#stopAllGrad)" stroke="#991B1B" stroke-width="1.5"/>
+  <rect x="22" y="13" width="12" height="12" rx="1.5" fill="white"/>
+  <!-- Front Stop Sign -->
+  <polygon points="13,14 25,14 34,23 34,35 25,44 13,44 4,35 4,23" fill="url(#stopAllGrad)" stroke="#991B1B" stroke-width="1.5"/>
+  <ellipse cx="19" cy="20" rx="8" ry="3" fill="white" opacity="0.35"/>
+  <rect x="13" y="23" width="12" height="12" rx="1.5" fill="white"/>
 </svg>

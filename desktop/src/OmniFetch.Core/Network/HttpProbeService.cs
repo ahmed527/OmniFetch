@@ -142,7 +142,7 @@ public partial class HttpProbeService : IHttpProbeService
         string? contentType = contentHeaders.ContentType?.MediaType;
 
         // Extract SuggestedFileName
-        string? suggestedFileName = ExtractFileName(contentHeaders.ContentDisposition, finalUrl);
+        string? suggestedFileName = ExtractFileName(contentHeaders.ContentDisposition, finalUrl, contentType);
 
         // Snapshot all response headers
         var allHeaders = new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase);
@@ -170,45 +170,42 @@ public partial class HttpProbeService : IHttpProbeService
         };
     }
 
-    private static string ExtractFileName(ContentDispositionHeaderValue? disposition, string url)
+    private static string ExtractFileName(ContentDispositionHeaderValue? disposition, string url, string? contentType)
     {
+        string? rawName = null;
+
         // 1. Check Content-Disposition filename* (RFC 6266 / RFC 5987 UTF-8 encoding)
         if (disposition != null)
         {
             if (!string.IsNullOrWhiteSpace(disposition.FileNameStar))
             {
-                return SanitizeFileName(disposition.FileNameStar);
+                rawName = disposition.FileNameStar;
             }
-
-            if (!string.IsNullOrWhiteSpace(disposition.FileName))
+            else if (!string.IsNullOrWhiteSpace(disposition.FileName))
             {
-                return SanitizeFileName(disposition.FileName.Trim('\"'));
+                rawName = disposition.FileName.Trim('\"');
             }
         }
 
         // 2. Fallback: Parse from URL path
-        try
+        if (string.IsNullOrWhiteSpace(rawName))
         {
-            var uri = new Uri(url);
-            string pathFileName = Path.GetFileName(uri.LocalPath);
-            if (!string.IsNullOrWhiteSpace(pathFileName))
+            try
             {
-                return SanitizeFileName(Uri.UnescapeDataString(pathFileName));
+                var uri = new Uri(url);
+                string pathFileName = Path.GetFileName(uri.LocalPath);
+                if (!string.IsNullOrWhiteSpace(pathFileName))
+                {
+                    rawName = Uri.UnescapeDataString(pathFileName);
+                }
+            }
+            catch
+            {
+                // Ignored
             }
         }
-        catch
-        {
-            // Ignored
-        }
 
-        // 3. Fallback default
-        return "download.bin";
-    }
-
-    private static string SanitizeFileName(string fileName)
-    {
-        var invalidChars = Path.GetInvalidFileNameChars();
-        var cleanName = string.Concat(fileName.Split(invalidChars));
-        return string.IsNullOrWhiteSpace(cleanName) ? "download.bin" : cleanName;
+        // 3. Guarantee valid name and accurate extension via MimeTypeMap
+        return MimeTypeMap.SanitizeAndEnsureExtension(rawName, contentType, url);
     }
 }

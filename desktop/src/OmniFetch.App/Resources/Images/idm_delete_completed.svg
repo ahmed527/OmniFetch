@@ -1,8 +1,19 @@
 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Trash can background -->
-  <path d="M11 12H27M16 12V9C16 8 16.7 7.3 17.6 7.3H20.4C21.3 7.3 22 8 22 9V12" stroke="#64748B" stroke-width="2" stroke-linecap="round"/>
-  <path d="M13 12L14.5 35C14.6 36 15.4 37 16.4 37H22" stroke="#64748B" stroke-width="2"/>
-  <!-- Completed Green Check Badge -->
-  <circle cx="33" cy="31" r="13" fill="#10B981" stroke="#047857" stroke-width="2"/>
-  <path d="M26 31L31 36L40 26" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="trashGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F1F5F9"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+    <linearGradient id="greenCheckGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Trash Can -->
+  <path d="M12 14L15 42C15 43.1046 15.8954 44 17 44H31C32.1046 44 33 43.1046 33 42L36 14" fill="url(#trashGrad2)" stroke="#64748B" stroke-width="1.5"/>
+  <path d="M9 14H39" stroke="#64748B" stroke-width="2" stroke-linecap="round"/>
+  <path d="M19 14V9C19 7.89543 19.8954 7 21 7H27C28.1046 7 29 7.89543 29 9V14" fill="#E2E8F0" stroke="#64748B" stroke-width="1.5"/>
+  <!-- Green Checkmark Badge -->
+  <circle cx="34" cy="34" r="11" fill="url(#greenCheckGrad)" stroke="#047857" stroke-width="1.5"/>
+  <path d="M28 34L32 38L40 29" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -1,4 +1,11 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="12" cy="12" r="9" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
-  <polyline points="12,7 12,12 15,12" stroke="#D97706" stroke-width="2" stroke-linecap="round"/>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="unfinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </linearGradient>
+  </defs>
+  <!-- Hourglass -->
+  <path d="M8 5H24M8 27H24M10 5C10 13 22 13 22 5M10 27C10 19 22 19 22 27" stroke="url(#unfinGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="16" cy="23" r="2" fill="#F59E0B"/>
 </svg>

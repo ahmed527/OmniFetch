@@ -1,5 +1,13 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M5 3C5 2.44772 5.44772 2 6 2H14L19 7V21C19 21.5523 18.5523 22 18 22H6C5.44772 22 5 21.5523 5 21V3Z" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.5"/>
-  <line x1="8" y1="11" x2="16" y2="11" stroke="#93C5FD" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="8" y1="15" x2="14" y2="15" stroke="#93C5FD" stroke-width="1.5" stroke-linecap="round"/>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="docIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F1F5F9"/>
+    </linearGradient>
+  </defs>
+  <path d="M6 5C6 3.89543 6.89543 3 8 3H19L26 10V27C26 28.1046 25.1046 29 24 29H8C6.89543 29 6 28.1046 6 27V5Z" fill="url(#docIconGrad)" stroke="#64748B" stroke-width="1.2"/>
+  <path d="M19 3V10H26" fill="#CBD5E1" stroke="#64748B" stroke-width="1.2"/>
+  <rect x="10" y="14" width="12" height="2" rx="1" fill="#3B82F6"/>
+  <rect x="10" y="18" width="9" height="1.5" rx="0.75" fill="#94A3B8"/>
+  <rect x="10" y="22" width="11" height="1.5" rx="0.75" fill="#CBD5E1"/>
 </svg>

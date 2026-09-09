@@ -17,6 +17,8 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 // Cache in-memory for active tab key modifiers (Alt = bypass, Ctrl = force)
 const tabModifierState = new Map();
+// Cache detected video stream URLs per tab
+const tabStreams = new Map();
 
 // 2. Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -30,6 +32,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         timestamp: Date.now()
       });
     }
+    return false;
+  }
+
+  if (message.type === "GET_TAB_STREAMS") {
+    const tabId = sender.tab ? sender.tab.id : null;
+    const streams = tabId && tabStreams.has(tabId) ? Array.from(tabStreams.get(tabId)) : [];
+    sendResponse({ success: true, streams });
     return false;
   }
 
@@ -52,6 +61,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "CAPTURE_URL") {
+    if (!message.url || message.url.startsWith("blob:")) {
+      sendResponse({ success: false, error: "Browser blob: URLs cannot be downloaded directly outside the browser." });
+      return false;
+    }
+
     captureExplicitUrl(message.url, message.referrer, message.suggestedFileName)
       .then(res => sendResponse({ success: true, data: res }))
       .catch(err => sendResponse({ success: false, error: err.message }));
@@ -68,9 +82,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-// Clean up modifier states on tab closure
+// Clean up states on tab closure
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabModifierState.delete(tabId);
+  tabStreams.delete(tabId);
 });
 
 // 3. Intercept browser downloads before disk writing begins
@@ -137,6 +152,7 @@ chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
         await chrome.storage.local.remove("pendingRefreshJobId");
         console.log(`[OmniFetch] Refreshing expired URL for job ${payload.jobId}`);
       } else {
+        const sanitizedName = sanitizeInterceptedFileName(downloadItem, targetUrl);
         payload = {
           action: "download",
           url: targetUrl,
@@ -145,7 +161,7 @@ chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
           userAgent: navigator.userAgent,
           mimeType: downloadItem.mime || "",
           fileSize: downloadItem.fileSize > 0 ? downloadItem.fileSize : 0,
-          suggestedFileName: downloadItem.filename || ""
+          suggestedFileName: sanitizedName
         };
       }
 
@@ -200,24 +216,92 @@ async function captureExplicitUrl(url, referrer, suggestedFileName) {
   });
 }
 
-// 5. Sniff streaming media playlists (.m3u8, .mpd)
+// Helper to sanitize intercepted filenames and eliminate .dat/.bin extensions
+function sanitizeInterceptedFileName(downloadItem, targetUrl) {
+  let filename = downloadItem.filename || "";
+  const lowerName = filename.toLowerCase();
+  const lowerUrl = (targetUrl || "").toLowerCase();
+
+  const isDummyExt = lowerName.endsWith(".dat") || lowerName.endsWith(".bin") || lowerName.endsWith(".tmp") || !filename.includes(".");
+  const isYouTube = lowerUrl.includes("googlevideo.com") || lowerUrl.includes("videoplayback");
+
+  if (isDummyExt || isYouTube) {
+    let preferredExt = ".mp4";
+    const mime = (downloadItem.mime || "").toLowerCase();
+    if (mime.includes("video/webm") || lowerUrl.includes("mime=video%2fwebm") || lowerUrl.includes("mime=video/webm")) {
+      preferredExt = ".webm";
+    } else if (mime.includes("audio/mp4") || lowerUrl.includes("mime=audio%2fmp4") || lowerUrl.includes("mime=audio/mp4")) {
+      preferredExt = ".m4a";
+    } else if (mime.includes("application/pdf")) {
+      preferredExt = ".pdf";
+    } else if (mime.includes("application/zip")) {
+      preferredExt = ".zip";
+    }
+
+    if (isYouTube) {
+      if (!filename || filename.toLowerCase().includes("videoplayback")) {
+        filename = `YouTube_Video${preferredExt}`;
+      } else if (lowerName.endsWith(".dat") || lowerName.endsWith(".bin")) {
+        filename = filename.replace(/\.(dat|bin)$/i, preferredExt);
+      }
+    } else if (isDummyExt && preferredExt) {
+      filename = filename ? filename.replace(/\.[^.]+$/, preferredExt) : `download${preferredExt}`;
+    }
+  }
+
+  return filename;
+}
+
+// 5. Sniff streaming media playlists (.m3u8, .mpd) and direct video streams (e.g. YouTube googlevideo.com)
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     if (!details.url || details.tabId < 0) return;
 
     const lowerUrl = details.url.toLowerCase();
-    if (lowerUrl.includes(".m3u8") || lowerUrl.includes(".mpd")) {
-      chrome.storage.local.get("videoGrabberEnabled", (cfg) => {
-        if (cfg.videoGrabberEnabled === false) return;
+    let isStream = false;
+    let streamUrl = details.url;
 
-        chrome.tabs.sendMessage(details.tabId, {
-          type: "STREAM_DETECTED",
-          url: details.url,
-          isHls: lowerUrl.includes(".m3u8"),
-          isDash: lowerUrl.includes(".mpd")
-        }).catch(() => {
-          // Tab may not have content script injected (e.g. extension page or iframe)
-        });
+    if (lowerUrl.includes(".m3u8") || lowerUrl.includes(".mpd")) {
+      isStream = true;
+    } else if (lowerUrl.includes("googlevideo.com/videoplayback")) {
+      isStream = true;
+      try {
+        const u = new URL(details.url);
+        u.searchParams.delete("range");
+        u.searchParams.delete("rn");
+        streamUrl = u.toString();
+      } catch (e) {
+        streamUrl = details.url;
+      }
+    } else if (details.type === "media" || lowerUrl.includes(".mp4") || lowerUrl.includes(".webm") || lowerUrl.includes(".ts")) {
+      isStream = true;
+    }
+
+    if (isStream) {
+      if (!tabStreams.has(details.tabId)) {
+        tabStreams.set(details.tabId, new Set());
+      }
+      tabStreams.get(details.tabId).add(streamUrl);
+
+      chrome.storage.local.get("videoGrabberEnabled", (cfg) => {
+        if (!cfg || cfg.videoGrabberEnabled === false) return;
+
+        try {
+          const p = chrome.tabs.sendMessage(details.tabId, {
+            type: "STREAM_DETECTED",
+            url: streamUrl,
+            isHls: lowerUrl.includes(".m3u8"),
+            isDash: lowerUrl.includes(".mpd"),
+            isYouTube: lowerUrl.includes("googlevideo.com")
+          }, () => {
+            if (chrome.runtime.lastError) {
+              // Safely suppress: receiving tab may not have content script injected
+            }
+          });
+          if (p && typeof p.catch === "function") {
+            p.catch(() => {});
+          }
+        } catch (e) {}
       });
     }
   },

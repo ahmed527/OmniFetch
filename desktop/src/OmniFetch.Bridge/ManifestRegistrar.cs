@@ -45,23 +45,23 @@ public static class ManifestRegistrar
             return 1;
         }
 
-        var allowedOrigins = new List<string>();
+        var allowedOrigins = new List<string>
+        {
+            "chrome-extension://fbdcklhjimmkkhcielggaocppnolhnda/",
+            "chrome-extension://omnifetch-default-extension-id/"
+        };
+
         if (!string.IsNullOrWhiteSpace(extensionId))
         {
             string cleanId = extensionId.Trim().TrimEnd('/');
-            if (cleanId.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase))
+            string origin = cleanId.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase)
+                ? $"{cleanId}/"
+                : $"chrome-extension://{cleanId}/";
+
+            if (!allowedOrigins.Contains(origin))
             {
-                allowedOrigins.Add($"{cleanId}/");
+                allowedOrigins.Insert(0, origin);
             }
-            else
-            {
-                allowedOrigins.Add($"chrome-extension://{cleanId}/");
-            }
-        }
-        else
-        {
-            // Default development extension origin placeholder (Chromium rejects wildcards)
-            allowedOrigins.Add("chrome-extension://omnifetch-default-extension-id/");
         }
 
         var manifest = new NativeHostManifest

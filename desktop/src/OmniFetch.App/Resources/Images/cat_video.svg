@@ -1,6 +1,17 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="3" y="4" width="18" height="16" rx="2" fill="#8B5CF6" stroke="#6D28D9" stroke-width="1.5"/>
-  <polygon points="10,9 16,12 10,15" fill="white"/>
-  <line x1="3" y1="7" x2="21" y2="7" stroke="white" stroke-opacity="0.3" stroke-dasharray="2 2"/>
-  <line x1="3" y1="17" x2="21" y2="17" stroke="white" stroke-opacity="0.3" stroke-dasharray="2 2"/>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="videoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4338CA"/>
+    </linearGradient>
+  </defs>
+  <!-- Clapperboard -->
+  <rect x="4" y="8" width="24" height="18" rx="2.5" fill="url(#videoGrad)" stroke="#3730A3" stroke-width="1.2"/>
+  <!-- Filmstrip Perforations -->
+  <rect x="6" y="10" width="3" height="3" rx="0.5" fill="white" opacity="0.8"/>
+  <rect x="11" y="10" width="3" height="3" rx="0.5" fill="white" opacity="0.8"/>
+  <rect x="16" y="10" width="3" height="3" rx="0.5" fill="white" opacity="0.8"/>
+  <rect x="21" y="10" width="3" height="3" rx="0.5" fill="white" opacity="0.8"/>
+  <!-- Play Arrow -->
+  <polygon points="13,16 21,20 13,24" fill="#FBBF24"/>
 </svg>

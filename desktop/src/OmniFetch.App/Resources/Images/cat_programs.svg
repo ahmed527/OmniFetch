@@ -1,8 +1,18 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="3" y="4" width="18" height="16" rx="2" fill="#F1F5F9" stroke="#475569" stroke-width="1.5"/>
-  <line x1="3" y1="8" x2="21" y2="8" stroke="#475569" stroke-width="1.5"/>
-  <circle cx="6" cy="6" r="1" fill="#EF4444"/>
-  <circle cx="9" cy="6" r="1" fill="#F59E0B"/>
-  <circle cx="12" cy="6" r="1" fill="#10B981"/>
-  <polygon points="9,12 15,15 9,18" fill="#3B82F6"/>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="progGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+  </defs>
+  <!-- Window Frame -->
+  <rect x="4" y="5" width="24" height="22" rx="3" fill="#F8FAFC" stroke="#475569" stroke-width="1.2"/>
+  <rect x="4" y="5" width="24" height="6" rx="3" fill="url(#progGrad)"/>
+  <circle cx="7.5" cy="8" r="1" fill="#EF4444"/>
+  <circle cx="10.5" cy="8" r="1" fill="#F59E0B"/>
+  <circle cx="13.5" cy="8" r="1" fill="#10B981"/>
+  <!-- Binary Gear in Window -->
+  <circle cx="16" cy="18" r="4.5" fill="#E2E8F0" stroke="#0284C7" stroke-width="1.5"/>
+  <rect x="15" y="14" width="2" height="8" rx="0.5" fill="#0284C7"/>
+  <rect x="12" y="17" width="8" height="2" rx="0.5" fill="#0284C7"/>
 </svg>

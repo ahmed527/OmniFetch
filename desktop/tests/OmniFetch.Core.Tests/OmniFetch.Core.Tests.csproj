@@ -29,5 +29,7 @@
     <Compile Include="..\..\src\OmniFetch.App\Models\CategoryItem.cs" Link="App\Models\CategoryItem.cs" />
     <Compile Include="..\..\src\OmniFetch.App\Models\SegmentDisplayItem.cs" Link="App\Models\SegmentDisplayItem.cs" />
     <Compile Include="..\..\src\OmniFetch.App\ViewModels\DownloadItemViewModel.cs" Link="App\ViewModels\DownloadItemViewModel.cs" />
+    <Compile Include="..\..\src\OmniFetch.App\Services\FolderPickerHelper.cs" Link="App\Services\FolderPickerHelper.cs" />
+    <Compile Include="..\..\src\OmniFetch.App\ViewModels\OptionsViewModel.cs" Link="App\ViewModels\OptionsViewModel.cs" />
   </ItemGroup>
 </Project>

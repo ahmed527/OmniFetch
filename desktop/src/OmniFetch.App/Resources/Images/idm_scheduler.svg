@@ -1,11 +1,29 @@
 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Calendar Body -->
-  <rect x="6" y="10" width="36" height="32" rx="4" fill="#F8FAFC" stroke="#3B82F6" stroke-width="2"/>
-  <path d="M6 18H42" stroke="#3B82F6" stroke-width="2"/>
-  <!-- Top binders -->
-  <rect x="13" y="5" width="4" height="8" rx="2" fill="#1D4ED8"/>
-  <rect x="31" y="5" width="4" height="8" rx="2" fill="#1D4ED8"/>
-  <!-- Round clock overlay -->
-  <circle cx="27" cy="28" r="10" fill="white" stroke="#0284C7" stroke-width="2"/>
-  <polyline points="27,22 27,28 32,28" stroke="#0284C7" stroke-width="2" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="clockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <linearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <!-- Calendar Page Background -->
+  <rect x="18" y="6" width="26" height="28" rx="3" fill="white" stroke="#64748B" stroke-width="1.5"/>
+  <rect x="18" y="6" width="26" height="8" rx="3" fill="url(#calGrad)"/>
+  <circle cx="24" cy="10" r="1.5" fill="white"/>
+  <circle cx="38" cy="10" r="1.5" fill="white"/>
+  <rect x="23" y="19" width="4" height="4" rx="1" fill="#94A3B8"/>
+  <rect x="30" y="19" width="4" height="4" rx="1" fill="#94A3B8"/>
+  <rect x="37" y="19" width="4" height="4" rx="1" fill="#94A3B8"/>
+  <!-- Classic Alarm Clock -->
+  <circle cx="20" cy="29" r="15" fill="url(#clockGrad)" stroke="#334155" stroke-width="2"/>
+  <circle cx="20" cy="29" r="12" fill="white" stroke="#CBD5E1" stroke-width="1"/>
+  <!-- Clock Hands -->
+  <path d="M20 20V29L26 29" stroke="#DC2626" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="20" cy="29" r="2" fill="#DC2626"/>
+  <!-- Alarm bells -->
+  <path d="M8 18L13 22" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
+  <path d="M32 18L27 22" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
 </svg>
