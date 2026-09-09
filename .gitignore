@@ -1,0 +1,60 @@
+## --------------------------------------------------
+## Build results (.NET / C#)
+## --------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+out/
+
+## Visual Studio cache and settings
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+*.DotSettings.user
+
+## Visual Studio Code & JetBrains Rider
+.vscode/
+.idea/
+*.launch
+*.sublime-workspace
+*.sublime-project
+
+## Test results & code coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+coverage/
+*.coverage
+*.coveragexml
+
+## NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+## macOS System Files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+Library/
+
+## Environment / Secrets / Local configs
+*.env
+*.env.local
+
+## Temporary & Swap Files
+*.tmp
+*~
+*.swp
+*.bak
+
+## Local NuGet / Tooling artifacts
+.local/

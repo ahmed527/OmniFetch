@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "OmniFetch Integration",
+  "version": "1.0.0",
+  "description": "Seamlessly routes downloads to OmniFetch for macOS.",
+  "permissions": [
+    "downloads",
+    "cookies",
+    "nativeMessaging",
+    "webRequest",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}

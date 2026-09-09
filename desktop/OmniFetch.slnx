@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OmniFetch.Core/OmniFetch.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OmniFetch.Core.Tests/OmniFetch.Core.Tests.csproj" />
+  </Folder>
+</Solution>
