@@ -1,0 +1,300 @@
+/* OmniFetch Extension Popup Styles — macOS Native Dark/Light Theme */
+
+:root {
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --accent-cyan: #0EA5E9;
+  --accent-purple: #8B5CF6;
+  --accent-green: #10B981;
+  --accent-red: #EF4444;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F1F5F9;
+    --border-color: rgba(0, 0, 0, 0.08);
+    --text-primary: #0F172A;
+    --text-secondary: #64748B;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+.popup-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Header */
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.brand-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.brand-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-connected {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.status-connected .status-dot {
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+}
+
+.status-offline {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.status-offline .status-dot {
+  background: var(--accent-red);
+}
+
+.status-checking {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-secondary);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+.status-checking .status-dot {
+  background: var(--text-secondary);
+}
+
+/* Cards */
+.section-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 8px 14px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.toggle-info {
+  display: flex;
+  flex-direction: column;
+  padding-right: 12px;
+}
+
+.toggle-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.toggle-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 2px 0;
+}
+
+/* Switches */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(148, 163, 184, 0.3);
+  transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+input:checked + .slider {
+  background-color: var(--accent-cyan);
+}
+
+input:checked + .slider:before {
+  transform: translateX(16px);
+}
+
+/* Shortcuts Card */
+.shortcuts-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shortcuts-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.shortcut-item {
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shortcut-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.key-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+/* Footer & Buttons */
+.popup-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action:hover {
+  background: rgba(14, 165, 233, 0.15);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.diagnostics-text {
+  font-size: 11px;
+  text-align: center;
+  min-height: 14px;
+}
+
+.diag-success {
+  color: var(--accent-green);
+}
+
+.diag-warning {
+  color: var(--accent-red);
+}

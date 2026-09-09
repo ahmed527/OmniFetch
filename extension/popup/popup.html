@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniFetch Integration</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand">
+        <img src="../icons/icon48.png" alt="OmniFetch" class="brand-icon">
+        <div>
+          <h1 class="brand-title">OmniFetch</h1>
+          <p class="brand-subtitle">macOS Download Accelerator</p>
+        </div>
+      </div>
+      <div id="connectionBadge" class="status-badge status-checking">
+        <span class="status-dot"></span>
+        <span id="statusText">Checking...</span>
+      </div>
+    </header>
+
+    <!-- Main Settings Toggles -->
+    <section class="section-card">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">Intercept Downloads</span>
+          <span class="toggle-desc">Automatically route browser downloads to OmniFetch</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleCapture" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">Video Grabber</span>
+          <span class="toggle-desc">Show floating download button on streaming media</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleVideoGrabber" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">Bypass PDF Files</span>
+          <span class="toggle-desc">Open PDFs directly in Chrome built-in viewer</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleBypassPdf" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Keyboard Shortcuts Guide (IDM parity) -->
+    <section class="shortcuts-card">
+      <div class="shortcuts-header">Keyboard Shortcuts</div>
+      <div class="shortcut-item">
+        <kbd class="key-badge">⌥ Alt</kbd> + Click
+        <span class="shortcut-desc">Bypass OmniFetch (download with Chrome)</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd class="key-badge">⌃ Ctrl</kbd> + Click
+        <span class="shortcut-desc">Force capture any link with OmniFetch</span>
+      </div>
+    </section>
+
+    <!-- Actions & Diagnostics -->
+    <footer class="popup-footer">
+      <button id="btnTestConnection" class="btn-action">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14h2v2h-2v-2zm0-10h2v8h-2V6z"/>
+        </svg>
+        <span>Test Daemon Connection</span>
+      </button>
+      <div id="diagnosticsOutput" class="diagnostics-text"></div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

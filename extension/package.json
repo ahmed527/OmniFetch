@@ -1,0 +1,16 @@
+{
+  "name": "omnifetch-extension",
+  "version": "1.0.0",
+  "description": "OmniFetch Chrome Manifest V3 Extension",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/extension.test.js"
+  },
+  "keywords": [
+    "download-accelerator",
+    "chrome-extension",
+    "omnifetch"
+  ],
+  "author": "OmniFetch Team",
+  "license": "Proprietary"
+}
