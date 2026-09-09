@@ -23,10 +23,23 @@ public class DownloadRepository : IDownloadRepository
     {
     }
 
+    private readonly object _initLock = new();
+    private bool _isInitialized;
+
     private OmniFetchDbContext CreateContext()
     {
         var context = new OmniFetchDbContext(_options);
-        context.Database.EnsureCreated();
+        if (!_isInitialized)
+        {
+            lock (_initLock)
+            {
+                if (!_isInitialized)
+                {
+                    context.Database.EnsureCreated();
+                    _isInitialized = true;
+                }
+            }
+        }
         return context;
     }
 
@@ -166,12 +179,22 @@ public class DownloadRepository : IDownloadRepository
 
         foreach (var segState in segments)
         {
+            var (currentByte, endByte, _) = segState.GetProgress();
             if (existingMap.TryGetValue(segState.SegmentIndex, out var existingEntity))
             {
-                if (existingEntity.CurrentByte != segState.CurrentByte || existingEntity.EndByte != segState.EndByte)
+                bool segmentChanged = false;
+                if (currentByte > existingEntity.CurrentByte)
                 {
-                    existingEntity.CurrentByte = segState.CurrentByte;
-                    existingEntity.EndByte = segState.EndByte;
+                    existingEntity.CurrentByte = currentByte;
+                    segmentChanged = true;
+                }
+                if (endByte != existingEntity.EndByte)
+                {
+                    existingEntity.EndByte = endByte;
+                    segmentChanged = true;
+                }
+                if (segmentChanged)
+                {
                     hasChanges = true;
                 }
             }
@@ -184,8 +207,8 @@ public class DownloadRepository : IDownloadRepository
                     JobId = jobId,
                     SegmentIndex = segState.SegmentIndex,
                     StartByte = segState.StartByte,
-                    EndByte = segState.EndByte,
-                    CurrentByte = segState.CurrentByte
+                    EndByte = endByte,
+                    CurrentByte = currentByte
                 });
                 hasChanges = true;
             }
@@ -230,7 +253,7 @@ public class DownloadRepository : IDownloadRepository
             DestinationFilePath = entity.DestinationFilePath,
             TotalBytes = entity.TotalBytes,
             ETag = entity.ETag,
-            LastModified = string.IsNullOrWhiteSpace(entity.LastModified) ? null : DateTimeOffset.Parse(entity.LastModified),
+            LastModified = DateTimeOffset.TryParse(entity.LastModified, out var dt) ? dt : null,
             Cookies = entity.Cookies,
             UserAgent = entity.UserAgent,
             Referrer = entity.Referrer,

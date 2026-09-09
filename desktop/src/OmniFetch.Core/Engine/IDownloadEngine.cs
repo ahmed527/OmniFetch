@@ -58,4 +58,13 @@ public interface IDownloadEngine
         DownloadOptions? options = null,
         IProgress<DownloadProgressSnapshot>? progress = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resumes an interrupted or paused download task by Job ID, reloading its state from the persistent repository.
+    /// </summary>
+    Task<DownloadJobInfo> ResumeDownloadAsync(
+        Guid jobId,
+        DownloadOptions? options = null,
+        IProgress<DownloadProgressSnapshot>? progress = null,
+        CancellationToken cancellationToken = default);
 }

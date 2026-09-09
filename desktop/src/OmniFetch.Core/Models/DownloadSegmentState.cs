@@ -12,6 +12,9 @@ public class DownloadSegmentState
     public Guid JobId { get; set; }
     public int SegmentIndex { get; set; }
 
+    private long _endByte;
+    private long _currentByte;
+
     /// <summary>
     /// Initial byte offset where this segment began downloading.
     /// </summary>
@@ -22,12 +25,32 @@ public class DownloadSegmentState
     /// Clamped downwards if another thread dynamically bisects this segment.
     /// A value of -1 signifies an unbounded stream (single-stream fallback when length is unknown).
     /// </summary>
-    public long EndByte { get; private set; }
+    public long EndByte
+    {
+        get
+        {
+            lock (_syncLock) return _endByte;
+        }
+        private set
+        {
+            lock (_syncLock) _endByte = value;
+        }
+    }
 
     /// <summary>
     /// Current write pointer offset. All bytes up to CurrentByte have been written to disk.
     /// </summary>
-    public long CurrentByte { get; private set; }
+    public long CurrentByte
+    {
+        get
+        {
+            lock (_syncLock) return _currentByte;
+        }
+        private set
+        {
+            lock (_syncLock) _currentByte = value;
+        }
+    }
 
     private bool _isAssigned;
 
@@ -52,7 +75,7 @@ public class DownloadSegmentState
         {
             lock (_syncLock)
             {
-                return EndByte >= 0 && CurrentByte > EndByte;
+                return _endByte >= 0 && _currentByte > _endByte;
             }
         }
     }
@@ -60,8 +83,8 @@ public class DownloadSegmentState
     public DownloadSegmentState(long startByte, long endByte, long currentByte = -1)
     {
         StartByte = startByte;
-        EndByte = endByte;
-        CurrentByte = currentByte < startByte ? startByte : currentByte;
+        _endByte = endByte;
+        _currentByte = currentByte < startByte ? startByte : currentByte;
     }
 
     /// <summary>
@@ -71,8 +94,8 @@ public class DownloadSegmentState
     {
         lock (_syncLock)
         {
-            CurrentByte += bytesRead;
-            return CurrentByte;
+            _currentByte += bytesRead;
+            return _currentByte;
         }
     }
 
@@ -83,8 +106,8 @@ public class DownloadSegmentState
     {
         lock (_syncLock)
         {
-            long remaining = EndByte >= 0 ? Math.Max(0, EndByte - CurrentByte + 1) : -1;
-            return (CurrentByte, EndByte, remaining);
+            long remaining = _endByte >= 0 ? Math.Max(0, _endByte - _currentByte + 1) : -1;
+            return (_currentByte, _endByte, remaining);
         }
     }
 
@@ -98,19 +121,19 @@ public class DownloadSegmentState
     {
         lock (_syncLock)
         {
-            if (newEnd < CurrentByte)
+            if (newEnd < _currentByte)
             {
                 // Worker has already downloaded past this split point!
                 return false;
             }
 
-            if (newEnd >= EndByte && EndByte >= 0)
+            if (newEnd >= _endByte && _endByte >= 0)
             {
                 // Not actually shrinking the segment
                 return false;
             }
 
-            EndByte = newEnd;
+            _endByte = newEnd;
             return true;
         }
     }
@@ -122,8 +145,8 @@ public class DownloadSegmentState
     {
         lock (_syncLock)
         {
-            EndByte = finalByte - 1;
-            CurrentByte = finalByte;
+            _endByte = finalByte - 1;
+            _currentByte = finalByte;
         }
     }
 }

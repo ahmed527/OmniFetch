@@ -73,6 +73,7 @@ public class OmniFetchDbContext : DbContext
             PRAGMA journal_mode = WAL;
             PRAGMA synchronous = NORMAL;
             PRAGMA busy_timeout = 5000;
+            PRAGMA foreign_keys = ON;
         ";
         command.ExecuteNonQuery();
     }
@@ -102,11 +103,36 @@ public class OmniFetchDbContext : DbContext
         {
             DataSource = path,
             Mode = SqliteOpenMode.ReadWriteCreate,
-            Cache = SqliteCacheMode.Shared
+            Cache = SqliteCacheMode.Private
         };
 
         var optionsBuilder = new DbContextOptionsBuilder<OmniFetchDbContext>();
         optionsBuilder.UseSqlite(connectionStringBuilder.ToString());
+        optionsBuilder.AddInterceptors(new SqlitePragmaInterceptor());
         return optionsBuilder.Options;
+    }
+}
+
+/// <summary>
+/// Interceptor to automatically apply WAL mode, synchronous=NORMAL, and busy timeout to all opened SQLite connections.
+/// </summary>
+public class SqlitePragmaInterceptor : Microsoft.EntityFrameworkCore.Diagnostics.DbConnectionInterceptor
+{
+    public override void ConnectionOpened(System.Data.Common.DbConnection connection, Microsoft.EntityFrameworkCore.Diagnostics.ConnectionEndEventData eventData)
+    {
+        if (connection is SqliteConnection sqliteConn)
+        {
+            OmniFetchDbContext.ConfigureSqlitePragmas(sqliteConn);
+        }
+        base.ConnectionOpened(connection, eventData);
+    }
+
+    public override async Task ConnectionOpenedAsync(System.Data.Common.DbConnection connection, Microsoft.EntityFrameworkCore.Diagnostics.ConnectionEndEventData eventData, CancellationToken cancellationToken = default)
+    {
+        if (connection is SqliteConnection sqliteConn)
+        {
+            OmniFetchDbContext.ConfigureSqlitePragmas(sqliteConn);
+        }
+        await base.ConnectionOpenedAsync(connection, eventData, cancellationToken);
     }
 }

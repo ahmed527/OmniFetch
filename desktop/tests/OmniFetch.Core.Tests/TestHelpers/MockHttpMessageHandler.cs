@@ -19,6 +19,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
     public int RequestCount => _requestCount;
     public bool SimulateExpiredLink { get; set; }
     public TimeSpan ArtificialDelayPerChunk { get; set; } = TimeSpan.Zero;
+    public System.Collections.Concurrent.ConcurrentBag<HttpRequestMessage> RecordedRequests { get; } = new();
 
     public MockHttpMessageHandler(
         byte[] payload,
@@ -37,6 +38,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Interlocked.Increment(ref _requestCount);
+        RecordedRequests.Add(request);
 
         if (SimulateExpiredLink)
         {

@@ -3,6 +3,7 @@ using OmniFetch.Core.Common;
 using OmniFetch.Core.Exceptions;
 using OmniFetch.Core.Models;
 using OmniFetch.Core.Network;
+using OmniFetch.Core.Persistence;
 using OmniFetch.Core.Segmentation;
 using OmniFetch.Core.Storage;
 
@@ -18,6 +19,8 @@ public class DownloadEngine : IDownloadEngine
     private readonly IHttpProbeService _probeService;
     private readonly IDiskStorageService _diskStorage;
     private readonly HttpClient _httpClient;
+    private readonly IDownloadRepository? _repository;
+    private readonly IWriteBehindService? _writeBehindService;
 
     public event EventHandler<DownloadProgressSnapshot>? ProgressChanged;
     public event EventHandler<(Guid JobId, DownloadStatus Status)>? StatusChanged;
@@ -26,11 +29,15 @@ public class DownloadEngine : IDownloadEngine
     public DownloadEngine(
         IHttpProbeService? probeService = null,
         IDiskStorageService? diskStorage = null,
-        HttpClient? httpClient = null)
+        HttpClient? httpClient = null,
+        IDownloadRepository? repository = null,
+        IWriteBehindService? writeBehindService = null)
     {
         _httpClient = httpClient ?? SocketsHttpHandlerFactory.CreateClient();
         _probeService = probeService ?? new HttpProbeService(_httpClient);
         _diskStorage = diskStorage ?? new DiskStorageService();
+        _repository = repository;
+        _writeBehindService = writeBehindService;
     }
 
     public async Task<DownloadJobInfo> CreateJobAsync(
@@ -52,7 +59,7 @@ public class DownloadEngine : IDownloadEngine
 
         string resolvedPath = ResolveDestinationPath(destinationFilePath, probe.SuggestedFileName);
 
-        return new DownloadJobInfo
+        var jobInfo = new DownloadJobInfo
         {
             Url = probe.FinalUrl,
             DestinationFilePath = resolvedPath,
@@ -66,6 +73,13 @@ public class DownloadEngine : IDownloadEngine
             Referrer = options.Referrer,
             Status = DownloadStatus.Queued
         };
+
+        if (_repository != null)
+        {
+            await _repository.AddJobAsync(jobInfo, cancellationToken).ConfigureAwait(false);
+        }
+
+        return jobInfo;
     }
 
     public async Task<DownloadJobInfo> StartDownloadAsync(
@@ -76,6 +90,28 @@ public class DownloadEngine : IDownloadEngine
     {
         ArgumentNullException.ThrowIfNull(jobInfo);
         options ??= new DownloadOptions();
+
+        if (string.IsNullOrWhiteSpace(options.Cookies) && !string.IsNullOrWhiteSpace(jobInfo.Cookies))
+        {
+            options = options with { Cookies = jobInfo.Cookies };
+        }
+        if (string.IsNullOrWhiteSpace(options.UserAgent) && !string.IsNullOrWhiteSpace(jobInfo.UserAgent))
+        {
+            options = options with { UserAgent = jobInfo.UserAgent };
+        }
+        if (string.IsNullOrWhiteSpace(options.Referrer) && !string.IsNullOrWhiteSpace(jobInfo.Referrer))
+        {
+            options = options with { Referrer = jobInfo.Referrer };
+        }
+
+        if (_repository != null)
+        {
+            var existing = await _repository.GetJobAsync(jobInfo.Id, cancellationToken).ConfigureAwait(false);
+            if (existing == null)
+            {
+                await _repository.AddJobAsync(jobInfo, cancellationToken).ConfigureAwait(false);
+            }
+        }
 
         jobInfo.Status = DownloadStatus.Downloading;
         NotifyStatus(jobInfo.Id, DownloadStatus.Downloading);
@@ -106,6 +142,64 @@ public class DownloadEngine : IDownloadEngine
         ArgumentNullException.ThrowIfNull(jobInfo);
         options ??= new DownloadOptions();
 
+        if (_repository != null)
+        {
+            var dbJob = await _repository.GetJobAsync(jobInfo.Id, cancellationToken).ConfigureAwait(false);
+            if (dbJob != null)
+            {
+                if (!string.IsNullOrEmpty(dbJob.Url))
+                {
+                    jobInfo.Url = dbJob.Url;
+                }
+                if (!string.IsNullOrEmpty(dbJob.Cookies))
+                {
+                    jobInfo.Cookies = dbJob.Cookies;
+                }
+                if (!string.IsNullOrEmpty(dbJob.UserAgent))
+                {
+                    jobInfo.UserAgent = dbJob.UserAgent;
+                }
+                if (!string.IsNullOrEmpty(dbJob.Referrer))
+                {
+                    jobInfo.Referrer = dbJob.Referrer;
+                }
+                if (dbJob.Segments.Count > 0)
+                {
+                    jobInfo.Segments = dbJob.Segments;
+                }
+                if (string.IsNullOrEmpty(jobInfo.ETag) && !string.IsNullOrEmpty(dbJob.ETag))
+                {
+                    jobInfo.ETag = dbJob.ETag;
+                }
+                if (jobInfo.TotalBytes <= 0 && dbJob.TotalBytes > 0)
+                {
+                    jobInfo.TotalBytes = dbJob.TotalBytes;
+                }
+                if (string.IsNullOrEmpty(jobInfo.DestinationFilePath) && !string.IsNullOrEmpty(dbJob.DestinationFilePath))
+                {
+                    jobInfo.DestinationFilePath = dbJob.DestinationFilePath;
+                }
+            }
+            else
+            {
+                await _repository.AddJobAsync(jobInfo, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        // Propagate cookies and headers from jobInfo into options so workers receive them
+        if (string.IsNullOrWhiteSpace(options.Cookies) && !string.IsNullOrWhiteSpace(jobInfo.Cookies))
+        {
+            options = options with { Cookies = jobInfo.Cookies };
+        }
+        if (string.IsNullOrWhiteSpace(options.UserAgent) && !string.IsNullOrWhiteSpace(jobInfo.UserAgent))
+        {
+            options = options with { UserAgent = jobInfo.UserAgent };
+        }
+        if (string.IsNullOrWhiteSpace(options.Referrer) && !string.IsNullOrWhiteSpace(jobInfo.Referrer))
+        {
+            options = options with { Referrer = jobInfo.Referrer };
+        }
+
         if (options.ValidateETagOnResume && !string.IsNullOrWhiteSpace(jobInfo.ETag))
         {
             var probe = await _probeService.ProbeAsync(jobInfo.Url, options, cancellationToken).ConfigureAwait(false);
@@ -127,6 +221,23 @@ public class DownloadEngine : IDownloadEngine
         await ExecuteSessionAsync(jobInfo, options, supportsRange: true, isResume: true, progress, cancellationToken).ConfigureAwait(false);
 
         return jobInfo;
+    }
+
+    public async Task<DownloadJobInfo> ResumeDownloadAsync(
+        Guid jobId,
+        DownloadOptions? options = null,
+        IProgress<DownloadProgressSnapshot>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_repository == null)
+        {
+            throw new InvalidOperationException("Cannot resume by JobId without a configured IDownloadRepository.");
+        }
+
+        var job = await _repository.GetJobAsync(jobId, cancellationToken).ConfigureAwait(false)
+            ?? throw new OmniFetchException($"Download job with ID {jobId} not found in repository.");
+
+        return await ResumeDownloadAsync(job, options, progress, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task ExecuteSessionAsync(
@@ -158,6 +269,14 @@ public class DownloadEngine : IDownloadEngine
             segmentManager.InitializeResumedJob(jobInfo.Id, jobInfo.TotalBytes, jobInfo.Segments);
         }
 
+        if (_repository != null)
+        {
+            await _repository.SaveSegmentsAsync(jobInfo.Id, segmentManager.GetSegments(), cancellationToken).ConfigureAwait(false);
+            await _repository.UpdateJobStatusAsync(jobInfo.Id, DownloadStatus.Downloading, ct: cancellationToken).ConfigureAwait(false);
+        }
+
+        _writeBehindService?.RegisterSession(jobInfo.Id, segmentManager);
+
         var rateLimiter = new TokenBucketRateLimiter(options.SpeedLimitBytesPerSecond);
         await using var session = new DownloadSession(jobInfo, options, fileHandle, segmentManager, rateLimiter, cancellationToken);
 
@@ -178,6 +297,10 @@ public class DownloadEngine : IDownloadEngine
                 jobInfo.Status = DownloadStatus.Completed;
                 jobInfo.CompletedAtUtc = DateTime.UtcNow;
                 NotifyStatus(jobInfo.Id, DownloadStatus.Completed);
+                if (_repository != null)
+                {
+                    await _repository.UpdateJobStatusAsync(jobInfo.Id, DownloadStatus.Completed, jobInfo.CompletedAtUtc, cancellationToken).ConfigureAwait(false);
+                }
                 return;
             }
 
@@ -265,17 +388,17 @@ public class DownloadEngine : IDownloadEngine
                 if (currentTasks.Length == 0) break;
 
                 var completedTask = await Task.WhenAny(currentTasks).ConfigureAwait(false);
-                if (completedTask.IsCanceled || session.CancellationTokenSource.IsCancellationRequested)
-                {
-                    throw new OperationCanceledException(session.CancellationTokenSource.Token);
-                }
-
                 if (completedTask.IsFaulted && completedTask.Exception != null)
                 {
                     var inner = completedTask.Exception.InnerExceptions.Count == 1
                         ? completedTask.Exception.InnerExceptions[0]
                         : completedTask.Exception;
                     throw inner;
+                }
+
+                if (completedTask.IsCanceled || session.CancellationTokenSource.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(session.CancellationTokenSource.Token);
                 }
             }
 
@@ -300,6 +423,14 @@ public class DownloadEngine : IDownloadEngine
                 jobInfo.Segments = [.. segmentManager.GetSegments()];
                 NotifyStatus(jobInfo.Id, DownloadStatus.Completed);
 
+                _writeBehindService?.UnregisterSession(jobInfo.Id);
+
+                if (_repository != null)
+                {
+                    await _repository.SaveSegmentsAsync(jobInfo.Id, jobInfo.Segments, CancellationToken.None).ConfigureAwait(false);
+                    await _repository.UpdateJobStatusAsync(jobInfo.Id, DownloadStatus.Completed, jobInfo.CompletedAtUtc, CancellationToken.None).ConfigureAwait(false);
+                }
+
                 // Send 100% completion snapshot
                 var finalSnapshot = session.GenerateSnapshot();
                 progress?.Report(finalSnapshot);
@@ -311,6 +442,19 @@ public class DownloadEngine : IDownloadEngine
             jobInfo.Status = DownloadStatus.Paused;
             jobInfo.Segments = [.. segmentManager.GetSegments()];
             NotifyStatus(jobInfo.Id, DownloadStatus.Paused);
+
+            _writeBehindService?.UnregisterSession(jobInfo.Id);
+
+            if (_repository != null)
+            {
+                try
+                {
+                    await _repository.SaveSegmentsAsync(jobInfo.Id, jobInfo.Segments, CancellationToken.None).ConfigureAwait(false);
+                    await _repository.UpdateJobStatusAsync(jobInfo.Id, DownloadStatus.Paused, ct: CancellationToken.None).ConfigureAwait(false);
+                }
+                catch { /* Ignore repository failures during cancellation */ }
+            }
+
             throw new DownloadPausedException(jobInfo, cancellationToken);
         }
         catch (ExpiredUrlException ex)
@@ -319,6 +463,19 @@ public class DownloadEngine : IDownloadEngine
             jobInfo.Segments = [.. segmentManager.GetSegments()];
             NotifyStatus(jobInfo.Id, DownloadStatus.Expired);
             ExpiredUrlDetected?.Invoke(this, ex);
+
+            _writeBehindService?.UnregisterSession(jobInfo.Id);
+
+            if (_repository != null)
+            {
+                try
+                {
+                    await _repository.SaveSegmentsAsync(jobInfo.Id, jobInfo.Segments, CancellationToken.None).ConfigureAwait(false);
+                    await _repository.UpdateJobStatusAsync(jobInfo.Id, DownloadStatus.Expired, ct: CancellationToken.None).ConfigureAwait(false);
+                }
+                catch { /* Ignore repository failures during expired handling */ }
+            }
+
             throw;
         }
         catch (Exception)
@@ -326,10 +483,25 @@ public class DownloadEngine : IDownloadEngine
             jobInfo.Status = DownloadStatus.Failed;
             jobInfo.Segments = [.. segmentManager.GetSegments()];
             NotifyStatus(jobInfo.Id, DownloadStatus.Failed);
+
+            _writeBehindService?.UnregisterSession(jobInfo.Id);
+
+            if (_repository != null)
+            {
+                try
+                {
+                    await _repository.SaveSegmentsAsync(jobInfo.Id, jobInfo.Segments, CancellationToken.None).ConfigureAwait(false);
+                    await _repository.UpdateJobStatusAsync(jobInfo.Id, DownloadStatus.Failed, ct: CancellationToken.None).ConfigureAwait(false);
+                }
+                catch { /* Ignore repository failures */ }
+            }
+
             throw;
         }
         finally
         {
+            _writeBehindService?.UnregisterSession(jobInfo.Id);
+
             await telemetryCts.CancelAsync();
             try { await telemetryTask.ConfigureAwait(false); } catch { /* Ignore cancellation */ }
 
