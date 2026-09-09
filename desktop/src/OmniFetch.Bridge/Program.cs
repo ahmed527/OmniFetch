@@ -14,36 +14,47 @@ public static class Program
     {
         if (args.Length > 0)
         {
-            string cmd = args[0].ToLowerInvariant();
-            switch (cmd)
+            string firstArg = args[0];
+
+            if (firstArg.Equals("--register", StringComparison.OrdinalIgnoreCase) ||
+                firstArg.Equals("-r", StringComparison.OrdinalIgnoreCase))
             {
-                case "--register":
-                case "-r":
-                    string? extId = args.Length > 1 ? args[1] : null;
-                    return ManifestRegistrar.Register(null, extId);
+                string? extId = args.Length > 1 ? args[1] : null;
+                return ManifestRegistrar.Register(null, extId);
+            }
 
-                case "--unregister":
-                case "-u":
-                    return ManifestRegistrar.Unregister();
+            if (firstArg.Equals("--unregister", StringComparison.OrdinalIgnoreCase) ||
+                firstArg.Equals("-u", StringComparison.OrdinalIgnoreCase))
+            {
+                return ManifestRegistrar.Unregister();
+            }
 
-                case "--ping":
-                case "-p":
-                    return await PingDaemonAsync();
+            if (firstArg.Equals("--ping", StringComparison.OrdinalIgnoreCase) ||
+                firstArg.Equals("-p", StringComparison.OrdinalIgnoreCase))
+            {
+                return await PingDaemonAsync();
+            }
 
-                case "--version":
-                case "-v":
-                    Console.WriteLine($"OmniFetch.Bridge version {Version} (Apple Silicon / Native AOT)");
-                    return 0;
+            if (firstArg.Equals("--version", StringComparison.OrdinalIgnoreCase) ||
+                firstArg.Equals("-v", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"OmniFetch.Bridge version {Version} (Apple Silicon / Native AOT)");
+                return 0;
+            }
 
-                case "--help":
-                case "-h":
-                    PrintHelp();
-                    return 0;
+            if (firstArg.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+                firstArg.Equals("-h", StringComparison.OrdinalIgnoreCase))
+            {
+                PrintHelp();
+                return 0;
+            }
 
-                default:
-                    Console.Error.WriteLine($"Unknown option: {args[0]}");
-                    PrintHelp();
-                    return 1;
+            // Reject only CLI options starting with '-' that are NOT browser options like --parent-window
+            if (firstArg.StartsWith("-") && !firstArg.StartsWith("--parent-window", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.Error.WriteLine($"Unknown option: {firstArg}");
+                PrintHelp();
+                return 1;
             }
         }
 

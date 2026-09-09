@@ -180,4 +180,25 @@ public class NativeMessagingBridgeTests
             if (File.Exists(tempManifestPath)) File.Delete(tempManifestPath);
         }
     }
+
+    [Fact]
+    public async Task Program_Main_VersionFlag_ReturnsZero()
+    {
+        int result = await OmniFetch.Bridge.Program.Main(["--version"]);
+        Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public async Task Program_Main_HelpFlag_ReturnsZero()
+    {
+        int result = await OmniFetch.Bridge.Program.Main(["--help"]);
+        Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public async Task Program_Main_UnknownFlag_ReturnsOne()
+    {
+        int result = await OmniFetch.Bridge.Program.Main(["--invalid-unknown-flag"]);
+        Assert.Equal(1, result);
+    }
 }
