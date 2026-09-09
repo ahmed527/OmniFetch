@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:OmniFetch.App.ViewModels"
+    xmlns:models="clr-namespace:OmniFetch.App.Models"
+    xmlns:controls="clr-namespace:OmniFetch.App.Views.Controls"
+    x:Class="OmniFetch.App.Views.MainPage"
+    x:DataType="vm:MainViewModel"
+    Title="Internet Download Manager (OmniFetch for Mac)"
+    BackgroundColor="#F8FAFC">
+
+    <!-- Native macOS Menu Bar -->
+    <ContentPage.MenuBarItems>
+        <MenuBarItem Text="Tasks">
+            <MenuFlyoutItem Text="Add New Download..." Command="{Binding AddDownloadCommand}" />
+            <MenuFlyoutItem Text="Start Queue" Command="{Binding StartQueueCommand}" />
+            <MenuFlyoutItem Text="Stop Queue" Command="{Binding StopQueueCommand}" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem Text="Exit" Clicked="OnExitClicked" />
+        </MenuBarItem>
+        <MenuBarItem Text="File">
+            <MenuFlyoutItem Text="Open Download Folder" Command="{Binding OpenFolderCommand}" />
+            <MenuFlyoutItem Text="Open File" Command="{Binding OpenFileCommand}" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem Text="Delete Selected" Command="{Binding DeleteCommand}" />
+            <MenuFlyoutItem Text="Delete Completed" Command="{Binding DeleteCompletedCommand}" />
+        </MenuBarItem>
+        <MenuBarItem Text="Downloads">
+            <MenuFlyoutItem Text="Resume" Command="{Binding ResumeCommand}" />
+            <MenuFlyoutItem Text="Stop" Command="{Binding StopCommand}" />
+            <MenuFlyoutItem Text="Stop All" Command="{Binding StopAllCommand}" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem Text="Options..." Command="{Binding OptionsCommand}" />
+        </MenuBarItem>
+        <MenuBarItem Text="Help">
+            <MenuFlyoutItem Text="Site Grabber Info..." Command="{Binding GrabberCommand}" />
+            <MenuFlyoutItem Text="About OmniFetch" Clicked="OnAboutClicked" />
+        </MenuBarItem>
+    </ContentPage.MenuBarItems>
+
+    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*">
+
+        <!-- 1. Classic IDM Toolbar -->
+        <Border Grid.Row="0" Stroke="#CBD5E1" StrokeThickness="0,0,0,1" BackgroundColor="{StaticResource IdmToolbarBg}" Padding="8,6">
+            <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                <HorizontalStackLayout Spacing="2" VerticalOptions="Center">
+                    <controls:ToolbarButton Text="Add URL" IconSource="idm_add.svg" Command="{Binding AddDownloadCommand}" />
+                    <controls:ToolbarButton Text="Resume" IconSource="idm_resume.svg" Command="{Binding ResumeCommand}" />
+                    <controls:ToolbarButton Text="Stop" IconSource="idm_stop.svg" Command="{Binding StopCommand}" />
+                    <controls:ToolbarButton Text="Stop All" IconSource="idm_stop_all.svg" Command="{Binding StopAllCommand}" />
+                    <controls:ToolbarButton Text="Delete" IconSource="idm_delete.svg" Command="{Binding DeleteCommand}" />
+                    <controls:ToolbarButton Text="Delete Comp." IconSource="idm_delete_completed.svg" Command="{Binding DeleteCompletedCommand}" />
+
+                    <!-- Toolbar Separator -->
+                    <BoxView Color="#CBD5E1" WidthRequest="1" HeightRequest="36" Margin="4,0" VerticalOptions="Center" />
+
+                    <controls:ToolbarButton Text="Options" IconSource="idm_options.svg" Command="{Binding OptionsCommand}" />
+                    <controls:ToolbarButton Text="Scheduler" IconSource="idm_scheduler.svg" Command="{Binding OptionsCommand}" />
+                    <controls:ToolbarButton Text="Start Queue" IconSource="idm_start_queue.svg" Command="{Binding StartQueueCommand}" />
+                    <controls:ToolbarButton Text="Stop Queue" IconSource="idm_stop_queue.svg" Command="{Binding StopQueueCommand}" />
+                    <controls:ToolbarButton Text="Grabber" IconSource="idm_grabber.svg" Command="{Binding GrabberCommand}" />
+                </HorizontalStackLayout>
+            </ScrollView>
+        </Border>
+
+        <!-- 2. Main Content Split: Categories Sidebar + Downloads Grid -->
+        <Grid Grid.Row="1" ColumnDefinitions="220,*">
+
+            <!-- Left Categories Sidebar -->
+            <Border Grid.Column="0" Stroke="#CBD5E1" StrokeThickness="0,0,1,0" BackgroundColor="{StaticResource IdmSidebarBg}">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Tree Root Header -->
+                    <Border Grid.Row="0" BackgroundColor="#E2E8F0" Padding="12,8" Stroke="#CBD5E1" StrokeThickness="0,0,0,1">
+                        <Label Text="Categories" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmSidebarText}" />
+                    </Border>
+
+                    <!-- Category Items List -->
+                    <CollectionView Grid.Row="1" ItemsSource="{Binding Categories}" SelectionMode="Single" SelectedItem="{Binding SelectedCategory, Mode=TwoWay}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:CategoryItem">
+                                <Border BackgroundColor="{Binding IsSelected, Converter={x:Null}}" Stroke="Transparent" Padding="10,8" Margin="4,1">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="4" />
+                                    </Border.StrokeShape>
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource IdmSidebarSelected}" />
+                                        </DataTrigger>
+                                    </Border.Triggers>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer 
+                                            Command="{Binding BindingContext.SelectCategoryCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+
+                                    <Grid ColumnDefinitions="22,*,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                                        <Image Grid.Column="0" Source="{Binding IconSource}" WidthRequest="18" HeightRequest="18" Aspect="AspectFit" VerticalOptions="Center" />
+                                        <Label Grid.Column="1" Text="{Binding Name}" FontSize="12" TextColor="{StaticResource IdmSidebarText}" VerticalOptions="Center" />
+                                        <Border Grid.Column="2" BackgroundColor="#E2E8F0" Stroke="Transparent" Padding="6,2" VerticalOptions="Center">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="8" />
+                                            </Border.StrokeShape>
+                                            <Label Text="{Binding Count}" FontSize="10" TextColor="{StaticResource IdmSidebarMuted}" FontAttributes="Bold" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Grid>
+            </Border>
+
+            <!-- Right Main Downloads Table -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*" BackgroundColor="{StaticResource IdmGridBg}">
+
+                <!-- Table Column Headers -->
+                <Border Grid.Row="0" BackgroundColor="{StaticResource IdmGridHeaderBg}" Stroke="#CBD5E1" StrokeThickness="0,0,0,1" Padding="8,6">
+                    <Grid ColumnDefinitions="240,90,110,90,100,130,*" ColumnSpacing="6">
+                        <Label Grid.Column="0" Text="File Name" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="1" Text="Size" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="2" Text="Status" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="3" Text="Time Left" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="4" Text="Transfer Rate" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="5" Text="Last Try Date" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="6" Text="Description" Style="{StaticResource IdmHeaderLabel}" />
+                    </Grid>
+                </Border>
+
+                <!-- Downloads Rows Collection -->
+                <CollectionView 
+                    Grid.Row="1" 
+                    ItemsSource="{Binding FilteredDownloads}" 
+                    SelectionMode="Single" 
+                    SelectedItem="{Binding SelectedDownload, Mode=TwoWay}">
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout Spacing="8" HorizontalOptions="Center" VerticalOptions="Center" Margin="30">
+                            <Image Source="idm_add.svg" WidthRequest="48" HeightRequest="48" HorizontalOptions="Center" Opacity="0.6" />
+                            <Label Text="No downloads in this category" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource IdmTextSecondary}" HorizontalOptions="Center" />
+                            <Label Text="Click 'Add URL' or download files from Chrome to begin accelerated transfers" FontSize="12" TextColor="{StaticResource IdmSidebarMuted}" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DownloadItemViewModel">
+                            <Border Stroke="#E2E8F0" StrokeThickness="0,0,0,1" Padding="8,7" BackgroundColor="White">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{StaticResource IdmGridSelectedBg}" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer NumberOfTapsRequired="2" Tapped="OnDownloadRowDoubleTapped" />
+                                </Border.GestureRecognizers>
+
+                                <Grid ColumnDefinitions="240,90,110,90,100,130,*" ColumnSpacing="6" VerticalOptions="Center">
+                                    <!-- File Name & Progress -->
+                                    <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding FileName}" FontSize="12" FontAttributes="Bold" LineBreakMode="MiddleTruncation" TextColor="{StaticResource IdmTextPrimary}" />
+                                        <ProgressBar Progress="{Binding ProgressFraction}" ProgressColor="{StaticResource IdmSecondary}" HeightRequest="4" IsVisible="{Binding IsDownloading}" />
+                                    </VerticalStackLayout>
+
+                                    <!-- Size -->
+                                    <Label Grid.Column="1" Text="{Binding FileSizeText}" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+
+                                    <!-- Status -->
+                                    <Label Grid.Column="2" Text="{Binding StatusText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmPrimary}" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+
+                                    <!-- Time Left -->
+                                    <Label Grid.Column="3" Text="{Binding TimeLeftText}" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+
+                                    <!-- Transfer Rate -->
+                                    <Label Grid.Column="4" Text="{Binding TransferRateText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmSecondary}" VerticalOptions="Center" />
+
+                                    <!-- Last Try Date -->
+                                    <Label Grid.Column="5" Text="{Binding LastTryDateText}" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+
+                                    <!-- Description / URL -->
+                                    <Label Grid.Column="6" Text="{Binding Url}" FontSize="11" TextColor="{StaticResource IdmSidebarMuted}" VerticalOptions="Center" LineBreakMode="MiddleTruncation" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+            </Grid>
+        </Grid>
+
+        <!-- 3. Bottom Status Bar -->
+        <Border Grid.Row="2" Stroke="#CBD5E1" StrokeThickness="0,1,0,0" BackgroundColor="#F1F5F9" Padding="12,6">
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Grid.Column="0" Text="{Binding StatusBarText}" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+                <Label Grid.Column="1" Text="{Binding TotalSpeedText, StringFormat='Total Speed: {0}'}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource IdmSecondary}" VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+    </Grid>
+
+</ContentPage>

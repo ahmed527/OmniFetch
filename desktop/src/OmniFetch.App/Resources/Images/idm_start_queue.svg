@@ -1,0 +1,9 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Stack of 3 pages -->
+  <rect x="7" y="5" width="22" height="28" rx="2" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.5"/>
+  <rect x="12" y="9" width="22" height="28" rx="2" fill="#F1F5F9" stroke="#94A3B8" stroke-width="1.5"/>
+  <rect x="17" y="13" width="22" height="28" rx="2" fill="white" stroke="#64748B" stroke-width="2"/>
+  <!-- Green Play Badge -->
+  <circle cx="34" cy="34" r="11" fill="#10B981" stroke="#047857" stroke-width="2"/>
+  <polygon points="30,28 40,34 30,40" fill="white"/>
+</svg>

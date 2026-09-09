@@ -8,7 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.Maui.Graphics" Version="10.0.20" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
@@ -21,5 +23,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\OmniFetch.Core\OmniFetch.Core.csproj" />
     <ProjectReference Include="..\..\src\OmniFetch.Bridge\OmniFetch.Bridge.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\OmniFetch.App\Models\CategoryItem.cs" Link="App\Models\CategoryItem.cs" />
+    <Compile Include="..\..\src\OmniFetch.App\Models\SegmentDisplayItem.cs" Link="App\Models\SegmentDisplayItem.cs" />
+    <Compile Include="..\..\src\OmniFetch.App\ViewModels\DownloadItemViewModel.cs" Link="App\ViewModels\DownloadItemViewModel.cs" />
   </ItemGroup>
 </Project>

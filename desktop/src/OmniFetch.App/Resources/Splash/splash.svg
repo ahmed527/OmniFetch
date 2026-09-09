@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.3" />
+    </linearGradient>
+  </defs>
+  <!-- Orbiting Acceleration Vortex Rings -->
+  <ellipse cx="256" cy="260" rx="160" ry="60" transform="rotate(-30 256 260)" stroke="url(#ringGrad)" stroke-width="6" stroke-dasharray="16 8" fill="none" />
+  <ellipse cx="256" cy="260" rx="130" ry="45" transform="rotate(25 256 260)" stroke="url(#ringGrad)" stroke-width="4" stroke-dasharray="10 6" fill="none" />
+  <!-- Supersonic Downward/Forward Accelerator Arrow -->
+  <path d="M256 90 L360 250 L286 250 L286 370 L226 370 L226 250 L152 250 Z" fill="url(#arrowGrad)" />
+  <!-- Speed lines -->
+  <line x1="210" y1="390" x2="210" y2="430" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" />
+  <line x1="256" y1="390" x2="256" y2="445" stroke="#06b6d4" stroke-width="6" stroke-linecap="round" />
+  <line x1="302" y1="390" x2="302" y2="425" stroke="#a855f7" stroke-width="5" stroke-linecap="round" />
+</svg>

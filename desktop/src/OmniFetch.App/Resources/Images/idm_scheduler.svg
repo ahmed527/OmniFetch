@@ -1,0 +1,11 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Calendar Body -->
+  <rect x="6" y="10" width="36" height="32" rx="4" fill="#F8FAFC" stroke="#3B82F6" stroke-width="2"/>
+  <path d="M6 18H42" stroke="#3B82F6" stroke-width="2"/>
+  <!-- Top binders -->
+  <rect x="13" y="5" width="4" height="8" rx="2" fill="#1D4ED8"/>
+  <rect x="31" y="5" width="4" height="8" rx="2" fill="#1D4ED8"/>
+  <!-- Round clock overlay -->
+  <circle cx="27" cy="28" r="10" fill="white" stroke="#0284C7" stroke-width="2"/>
+  <polyline points="27,22 27,28 32,28" stroke="#0284C7" stroke-width="2" stroke-linecap="round"/>
+</svg>

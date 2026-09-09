@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:OmniFetch.App.ViewModels"
+    xmlns:models="clr-namespace:OmniFetch.App.Models"
+    xmlns:controls="clr-namespace:OmniFetch.App.Views.Controls"
+    x:Class="OmniFetch.App.Views.Dialogs.DownloadProgressDialog"
+    x:DataType="vm:DownloadProgressViewModel"
+    Title="{Binding DialogTitle}"
+    BackgroundColor="#F1F5F9"
+    WidthRequest="650"
+    HeightRequest="520">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="20" RowSpacing="12">
+        <!-- 1. File Details Card -->
+        <Border Grid.Row="0" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="White" Padding="14">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="6" />
+            </Border.StrokeShape>
+            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="12">
+                <Label Grid.Row="0" Grid.Column="0" Text="File Name:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Grid.Row="0" Grid.Column="1" Text="{Binding Download.FileName}" FontAttributes="Bold" FontSize="13" TextColor="{StaticResource IdmTextPrimary}" LineBreakMode="MiddleTruncation" />
+
+                <Label Grid.Row="1" Grid.Column="0" Text="Status:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Grid.Row="1" Grid.Column="1" Text="{Binding Download.StatusText}" FontSize="12" TextColor="{StaticResource IdmPrimary}" FontAttributes="Bold" />
+
+                <Label Grid.Row="2" Grid.Column="0" Text="File Size:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Grid.Row="2" Grid.Column="1" Text="{Binding Download.FileSizeText}" FontSize="12" TextColor="{StaticResource IdmTextPrimary}" />
+
+                <Label Grid.Row="3" Grid.Column="0" Text="Downloaded:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Grid.Row="3" Grid.Column="1" Text="{Binding Download.DownloadedBytes, StringFormat='{0:N0} bytes'}" FontSize="12" TextColor="{StaticResource IdmTextPrimary}" />
+
+                <Label Grid.Row="4" Grid.Column="0" Text="Transfer Rate:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Grid.Row="4" Grid.Column="1" Text="{Binding Download.TransferRateText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource IdmSecondary}" />
+
+                <Label Grid.Row="5" Grid.Column="0" Text="Time Left:" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Grid.Row="5" Grid.Column="1" Text="{Binding Download.TimeLeftText}" FontSize="12" TextColor="{StaticResource IdmTextPrimary}" />
+            </Grid>
+        </Border>
+
+        <!-- 2. IDM Signature Segmented Progress Bar -->
+        <VerticalStackLayout Grid.Row="1" Spacing="4">
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Grid.Column="0" Text="Multi-Stream Allocation" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource IdmTextSecondary}" />
+                <Label Grid.Column="1" Text="{Binding Download.ProgressPercentage, StringFormat='{0:F1}%'}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmPrimaryDark}" />
+            </Grid>
+            <controls:SegmentedProgressBar 
+                Segments="{Binding Segments}" 
+                ProgressPercentage="{Binding Download.ProgressPercentage}" 
+                HeightRequest="24" />
+        </VerticalStackLayout>
+
+        <!-- 3. Connection Streams Data Table -->
+        <Border Grid.Row="2" Stroke="#CBD5E1" StrokeThickness="1" BackgroundColor="White" Padding="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="6" />
+            </Border.StrokeShape>
+            <Grid RowDefinitions="Auto,*">
+                <!-- Stream Headers -->
+                <Grid Grid.Row="0" BackgroundColor="#E2E8F0" Padding="8,6" ColumnDefinitions="80,120,*,100">
+                    <Label Grid.Column="0" Text="Stream #" Style="{StaticResource IdmHeaderLabel}" />
+                    <Label Grid.Column="1" Text="Status" Style="{StaticResource IdmHeaderLabel}" />
+                    <Label Grid.Column="2" Text="Transferred" Style="{StaticResource IdmHeaderLabel}" />
+                    <Label Grid.Column="3" Text="Speed" Style="{StaticResource IdmHeaderLabel}" HorizontalTextAlignment="End" />
+                </Grid>
+
+                <!-- Stream Rows -->
+                <CollectionView Grid.Row="1" ItemsSource="{Binding Segments}" SelectionMode="None">
+                    <CollectionView.EmptyView>
+                        <Label Text="1 connection active" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" HorizontalOptions="Center" VerticalOptions="Center" Margin="12" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:SegmentDisplayItem">
+                            <Grid ColumnDefinitions="80,120,*,100" Padding="8,6">
+                                <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                                    <BoxView Color="{Binding SegmentColor}" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" />
+                                    <Label Text="{Binding SegmentIndex, StringFormat='Conn {0}'}" FontSize="11" FontAttributes="Bold" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                <Label Grid.Column="1" Text="{Binding StatusText}" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+                                <Label Grid.Column="2" Text="{Binding DownloadedBytes, StringFormat='{0:N0} bytes'}" FontSize="11" TextColor="{StaticResource IdmTextPrimary}" VerticalOptions="Center" />
+                                <Label Grid.Column="3" Text="{Binding SpeedText}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource IdmSecondary}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Border>
+
+        <!-- 4. Dialog Controls & Buttons -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="10" VerticalOptions="Center">
+            <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                <CheckBox IsChecked="{Binding SpeedLimitEnabled}" VerticalOptions="Center" />
+                <Label Text="Limit Speed:" FontSize="12" VerticalOptions="Center" TextColor="{StaticResource IdmTextPrimary}" />
+                <Label Text="{Binding SpeedLimitKbps, StringFormat='{0:F0} KB/s'}" FontSize="12" FontAttributes="Bold" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <Button Grid.Column="2" 
+                    Text="{Binding PauseResumeText}" 
+                    Clicked="OnPauseResumeClicked"
+                    Style="{StaticResource IdmSecondaryButton}" 
+                    WidthRequest="90" />
+            <Button Grid.Column="3" Text="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource IdmSecondaryButton}" WidthRequest="80" />
+            <Button Grid.Column="4" Text="Hide" Command="{Binding HideCommand}" Style="{StaticResource IdmPrimaryButton}" WidthRequest="80" />
+        </Grid>
+    </Grid>
+
+</ContentPage>

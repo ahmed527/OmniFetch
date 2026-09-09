@@ -1,0 +1,9 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Trash lid -->
+  <path d="M14 12H34M20 12V8C20 6.89543 20.8954 6 22 6H26C27.1046 6 28 6.89543 28 8V12" stroke="#EF4444" stroke-width="3" stroke-linecap="round"/>
+  <!-- Trash body -->
+  <path d="M16 12L18 39C18.1 40.1 19 41 20.1 41H27.9C29 41 29.9 40.1 30 39L32 12" fill="#FEE2E2" stroke="#EF4444" stroke-width="3"/>
+  <!-- Inner ribs -->
+  <line x1="21" y1="18" x2="21" y2="34" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+  <line x1="27" y1="18" x2="27" y2="34" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+</svg>

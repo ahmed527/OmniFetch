@@ -1,0 +1,11 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Document body -->
+  <path d="M10 6C10 4.89543 10.8954 4 12 4H26L36 14V40C36 41.1046 35.1046 42 34 42H12C10.8954 42 10 41.1046 10 40V6Z" fill="#F8FAFC" stroke="#94A3B8" stroke-width="2"/>
+  <path d="M26 4V14H36" fill="#E2E8F0" stroke="#94A3B8" stroke-width="2"/>
+  <!-- Document content lines -->
+  <line x1="16" y1="20" x2="28" y2="20" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+  <line x1="16" y1="26" x2="24" y2="26" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/>
+  <!-- Green Plus Circle Badge -->
+  <circle cx="34" cy="34" r="11" fill="#10B981" stroke="#047857" stroke-width="2"/>
+  <path d="M34 28V40M28 34H40" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg>

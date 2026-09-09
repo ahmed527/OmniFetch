@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- IDM Primary Palette -->
+    <Color x:Key="IdmPrimary">#2563EB</Color>
+    <Color x:Key="IdmPrimaryDark">#1D4ED8</Color>
+    <Color x:Key="IdmSecondary">#10B981</Color>
+    <Color x:Key="IdmAccent">#06B6D4</Color>
+    <Color x:Key="IdmWarning">#F59E0B</Color>
+    <Color x:Key="IdmDanger">#EF4444</Color>
+
+    <!-- Toolbar & Chrome -->
+    <Color x:Key="IdmToolbarBg">#F1F5F9</Color>
+    <Color x:Key="IdmToolbarBorder">#CBD5E1</Color>
+    <Color x:Key="IdmToolbarHover">#E2E8F0</Color>
+
+    <!-- Sidebar & Tree -->
+    <Color x:Key="IdmSidebarBg">#F8FAFC</Color>
+    <Color x:Key="IdmSidebarSelected">#DBEAFE</Color>
+    <Color x:Key="IdmSidebarText">#1E293B</Color>
+    <Color x:Key="IdmSidebarMuted">#64748B</Color>
+
+    <!-- Data Grid & Lists -->
+    <Color x:Key="IdmGridBg">#FFFFFF</Color>
+    <Color x:Key="IdmGridAltBg">#F8FAFC</Color>
+    <Color x:Key="IdmGridHeaderBg">#E2E8F0</Color>
+    <Color x:Key="IdmGridHeaderText">#334155</Color>
+    <Color x:Key="IdmGridBorder">#CBD5E1</Color>
+    <Color x:Key="IdmGridSelectedBg">#BFDBFE</Color>
+    <Color x:Key="IdmGridSelectedText">#1E3A8A</Color>
+    <Color x:Key="IdmTextPrimary">#0F172A</Color>
+    <Color x:Key="IdmTextSecondary">#475569</Color>
+
+    <!-- Progress Bar & Multi-stream Segments -->
+    <Color x:Key="IdmSegment1">#10B981</Color>
+    <Color x:Key="IdmSegment2">#06B6D4</Color>
+    <Color x:Key="IdmSegment3">#3B82F6</Color>
+    <Color x:Key="IdmSegment4">#8B5CF6</Color>
+    <Color x:Key="IdmSegment5">#EC4899</Color>
+    <Color x:Key="IdmSegment6">#F59E0B</Color>
+    <Color x:Key="IdmSegment7">#14B8A6</Color>
+    <Color x:Key="IdmSegment8">#6366F1</Color>
+    <Color x:Key="IdmProgressTrack">#E2E8F0</Color>
+    <Color x:Key="IdmProgressMarker">#FACC15</Color>
+
+</ResourceDictionary>

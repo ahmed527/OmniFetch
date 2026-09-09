@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="OmniFetch.App.Views.Controls.SegmentedProgressBar"
+    x:Name="ThisControl">
+
+    <Border 
+        Stroke="#94A3B8" 
+        StrokeThickness="1.5" 
+        BackgroundColor="#0F172A" 
+        HeightRequest="24">
+        <Border.StrokeShape>
+            <RoundRectangle CornerRadius="3" />
+        </Border.StrokeShape>
+
+        <GraphicsView 
+            x:Name="CanvasView" 
+            HorizontalOptions="Fill" 
+            VerticalOptions="Fill" />
+    </Border>
+
+</ContentView>

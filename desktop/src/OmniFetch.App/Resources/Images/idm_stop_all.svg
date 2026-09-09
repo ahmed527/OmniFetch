@@ -1,0 +1,8 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rear octagon -->
+  <polygon points="22,3 36,3 45,12 45,26 36,35 22,35 13,26 13,12" fill="#DC2626" opacity="0.6" stroke="#991B1B" stroke-width="1.5"/>
+  <rect x="23" y="13" width="12" height="12" rx="1.5" fill="white" opacity="0.8"/>
+  <!-- Front octagon -->
+  <polygon points="13,13 27,13 37,23 37,37 27,47 13,47 3,37 3,23" fill="#EF4444" stroke="#991B1B" stroke-width="2"/>
+  <rect x="14" y="24" width="12" height="12" rx="1.5" fill="white"/>
+</svg>
