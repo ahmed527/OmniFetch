@@ -35,7 +35,7 @@
                 HorizontalOptions="Center" />
             <Label 
                 Text="{Binding Text, Source={x:Reference ThisButton}}" 
-                Style="{StaticResource IdmToolbarButtonLabel}" 
+                Style="{DynamicResource IdmToolbarButtonLabel}" 
                 HorizontalOptions="Center"
                 LineBreakMode="NoWrap" />
         </VerticalStackLayout>

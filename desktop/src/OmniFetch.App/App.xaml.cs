@@ -1,3 +1,5 @@
+using System;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 
@@ -5,17 +7,18 @@ namespace OmniFetch.App;
 
 public partial class App : Application
 {
-    private readonly Views.MainPage _mainPage;
+    private readonly IServiceProvider _services;
 
-    public App(Views.MainPage mainPage)
+    public App(IServiceProvider services)
     {
         InitializeComponent();
-        _mainPage = mainPage;
+        _services = services;
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        var window = new Window(new NavigationPage(_mainPage))
+        var mainPage = _services.GetRequiredService<Views.MainPage>();
+        var window = new Window(new NavigationPage(mainPage))
         {
             Title = "Internet Download Manager (OmniFetch for Mac)",
             Width = 1100,
