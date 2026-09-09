@@ -516,9 +516,9 @@ OmniFetch/
 
 | Phase | Subsystem | Core Goal | Status |
 | :---: | :--- | :--- | :---: |
-| **Phase 1** | **Core Engine Class Library** | Multi-stream engine, dynamic bisection, lock-free disk I/O, rate limiting | **In Progress** |
-| **Phase 2** | **SQLite State Engine** | EF Core persistence, write-behind flushing, resume verification | Pending |
-| **Phase 3** | **Native AOT IPC Bridge** | Headless stdio host to Unix Domain Socket relay | Pending |
+| **Phase 1** | **Core Engine Class Library** | Multi-stream engine, dynamic bisection, lock-free disk I/O, rate limiting | **Completed** |
+| **Phase 2** | **SQLite State Engine** | EF Core persistence, write-behind flushing, resume verification | **Completed** |
+| **Phase 3** | **Native AOT IPC Bridge** | Headless stdio host to Unix Domain Socket relay | **Completed** |
 | **Phase 4** | **Chrome Extension (MV3)** | Download interception, cookies, referrer context dispatch | Pending |
 | **Phase 5** | **MAUI Mac Catalyst Shell** | Desktop UI, segmented progress bars, App Nap prevention | Pending |
 | **Phase 6** | **HLS/FFmpeg Integration** | M3U8 parsing, parallel chunk fetching, lossless remuxing | Pending |
