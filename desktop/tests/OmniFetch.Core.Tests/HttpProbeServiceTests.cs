@@ -64,4 +64,31 @@ public class HttpProbeServiceTests
         Assert.False(result.SupportsRange);
         Assert.False(result.IsResumableAndSegmentable);
     }
+
+    [Fact]
+    public async Task ProbeAsync_WhenResponseIsYtUmp_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("sabr.malformed_config")
+        };
+        response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/vnd.yt-ump");
+
+        var handler = new CustomResponseHandler(response);
+        using var client = new HttpClient(handler);
+        var probeService = new HttpProbeService(client);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => probeService.ProbeAsync("https://rr1---sn.googlevideo.com/videoplayback?sabr=1"));
+        Assert.Contains("YouTube SABR UMP stream", ex.Message);
+    }
+
+    private class CustomResponseHandler : HttpMessageHandler
+    {
+        private readonly HttpResponseMessage _response;
+        public CustomResponseHandler(HttpResponseMessage response) => _response = response;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(_response);
+    }
 }

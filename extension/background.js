@@ -483,6 +483,10 @@ chrome.webRequest.onBeforeRequest.addListener(
     if (lowerUrl.includes(".m3u8") || lowerUrl.includes(".mpd")) {
       isStream = true;
     } else if (lowerUrl.includes("googlevideo.com/videoplayback")) {
+      // Ignore YouTube SABR UMP multiplexed streams (which return 31-byte sabr.malformed_config)
+      if (lowerUrl.includes("sabr=1") || lowerUrl.includes("alr=yes")) {
+        return;
+      }
       isStream = true;
       try {
         const u = new URL(details.url);

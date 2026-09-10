@@ -14,6 +14,12 @@ public partial class MainPage : ContentPage
 {
     private readonly MainViewModel _viewModel;
     private readonly ISettingsService? _settingsService;
+    private const double RowHeightApprox = 38.0;
+    private bool _isPointerDown;
+    private bool _isDragging;
+    private Point _dragStartPoint;
+    private bool _hasDragStartPoint;
+    private DownloadItemViewModel? _dragAnchorItem;
 
     public MainPage(MainViewModel viewModel, ISettingsService? settingsService = null)
     {
@@ -218,11 +224,263 @@ public partial class MainPage : ContentPage
         }
     }
 
+    private void OnDownloadRowTapped(object? sender, TappedEventArgs e)
+    {
+        if (_isDragging) return;
+        if (sender is VisualElement visual && visual.BindingContext is DownloadItemViewModel item)
+        {
+            _viewModel.SelectDownload(item, isToggle: false, isRange: false);
+        }
+    }
+
+    private void OnDownloadRowPointerPressed(object? sender, PointerEventArgs e)
+    {
+        if (sender is VisualElement visual && visual.BindingContext is DownloadItemViewModel item)
+        {
+            _isPointerDown = true;
+            _isDragging = false;
+            _dragAnchorItem = item;
+
+            // Capture exact click coordinates relative to ListContainer
+            var pos = e.GetPosition(ListContainer);
+            if (pos.HasValue)
+            {
+                _dragStartPoint = pos.Value;
+                _hasDragStartPoint = true;
+            }
+            else
+            {
+                int anchorIdx = _viewModel.FilteredDownloads.IndexOf(item);
+                double rowTop = anchorIdx >= 0 ? anchorIdx * RowHeightApprox : 0;
+                var localPos = e.GetPosition(visual);
+                double localX = localPos?.X ?? 100;
+                double localY = localPos?.Y ?? (RowHeightApprox / 2.0);
+                _dragStartPoint = new Point(localX, rowTop + localY);
+                _hasDragStartPoint = true;
+            }
+
+            // Immediate feedback on mouse press (left or right click)
+            if (!item.IsSelected)
+            {
+                _viewModel.SelectDownload(item, isToggle: false, isRange: false);
+            }
+            else
+            {
+                _viewModel.SelectedDownload = item;
+            }
+        }
+    }
+
+    private void OnTablePointerPressed(object? sender, PointerEventArgs e)
+    {
+        _isPointerDown = true;
+        _isDragging = false;
+        _dragAnchorItem = null;
+
+        var pos = e.GetPosition(ListContainer);
+        if (pos.HasValue)
+        {
+            _dragStartPoint = pos.Value;
+            _hasDragStartPoint = true;
+        }
+        else
+        {
+            _dragStartPoint = new Point(0, 0);
+            _hasDragStartPoint = false;
+        }
+    }
+
+    private void OnDownloadRowPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (_isPointerDown && _dragAnchorItem != null)
+        {
+            if (sender is VisualElement visual && visual.BindingContext is DownloadItemViewModel item)
+            {
+                if (_isDragging || item != _dragAnchorItem)
+                {
+                    _isDragging = true;
+                    _viewModel.SelectRange(_dragAnchorItem, item, keepExisting: false);
+                }
+            }
+        }
+    }
+
+    private void OnTablePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isPointerDown) return;
+
+        var pos = e.GetPosition(ListContainer);
+        if (!pos.HasValue) return;
+
+        double currentX = pos.Value.X;
+        double currentY = pos.Value.Y;
+
+        if (!_isDragging)
+        {
+            if (!_hasDragStartPoint)
+            {
+                _dragStartPoint = new Point(currentX, currentY);
+                _hasDragStartPoint = true;
+            }
+
+            double deltaX = Math.Abs(currentX - _dragStartPoint.X);
+            double deltaY = Math.Abs(currentY - _dragStartPoint.Y);
+            if (deltaX > 3 || deltaY > 3)
+            {
+                _isDragging = true;
+            }
+        }
+
+        if (_isDragging)
+        {
+            UpdateMarqueeGeometry(currentX, currentY);
+        }
+    }
+
+    private void OnTablePanUpdated(object? sender, PanUpdatedEventArgs e)
+    {
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                _isDragging = true;
+                break;
+
+            case GestureStatus.Running:
+                _isDragging = true;
+
+                if (!_hasDragStartPoint)
+                {
+                    double anchorY = _dragAnchorItem != null
+                        ? Math.Max(0, _viewModel.FilteredDownloads.IndexOf(_dragAnchorItem) * RowHeightApprox)
+                        : 0;
+                    _dragStartPoint = new Point(30, anchorY);
+                    _hasDragStartPoint = true;
+                }
+
+                double currentX = _dragStartPoint.X + e.TotalX;
+                double currentY = _dragStartPoint.Y + e.TotalY;
+
+                UpdateMarqueeGeometry(currentX, currentY);
+                break;
+
+            case GestureStatus.Completed:
+            case GestureStatus.Canceled:
+                FinishDrag();
+                break;
+        }
+    }
+
+    private void UpdateMarqueeGeometry(double currentX, double currentY)
+    {
+        if (!_hasDragStartPoint)
+        {
+            _dragStartPoint = new Point(currentX, currentY);
+            _hasDragStartPoint = true;
+        }
+
+        // Clamp coordinates to container bounds (non-negative)
+        double startX = Math.Max(0, _dragStartPoint.X);
+        double startY = Math.Max(0, _dragStartPoint.Y);
+        double curX = Math.Max(0, currentX);
+        double curY = Math.Max(0, currentY);
+
+        double minX = Math.Min(startX, curX);
+        double minY = Math.Min(startY, curY);
+        double maxX = Math.Max(startX, curX);
+        double maxY = Math.Max(startY, curY);
+
+        double width = Math.Max(2, maxX - minX);
+        double height = Math.Max(2, maxY - minY);
+
+        MarqueeSelectionBox.Margin = new Thickness(minX, minY, 0, 0);
+        MarqueeSelectionBox.WidthRequest = width;
+        MarqueeSelectionBox.HeightRequest = height;
+        MarqueeSelectionBox.IsVisible = true;
+
+        UpdateMarqueeSelection(startY, curY);
+    }
+
+    private void UpdateMarqueeSelection(double anchorY, double cursorY)
+    {
+        if (_viewModel.FilteredDownloads.Count == 0) return;
+
+        double totalItemsHeight = _viewModel.FilteredDownloads.Count * RowHeightApprox;
+        double minY = Math.Min(anchorY, cursorY);
+        double maxY = Math.Max(anchorY, cursorY);
+        
+        // If the marquee is completely outside the item area, clear selection (unless anchor item exists)
+        if (minY >= totalItemsHeight || maxY <= 0)
+        {
+            if (_dragAnchorItem == null)
+            {
+                _viewModel.ClearDownloadsSelection();
+            }
+            return;
+        }
+
+        int anchorIdx = Math.Clamp((int)(anchorY / RowHeightApprox), 0, _viewModel.FilteredDownloads.Count - 1);
+        int cursorIdx = Math.Clamp((int)(cursorY / RowHeightApprox), 0, _viewModel.FilteredDownloads.Count - 1);
+
+        _viewModel.SelectRangeByIndex(anchorIdx, cursorIdx);
+    }
+
+    private void FinishDrag()
+    {
+        bool wasDragging = _isDragging;
+        var anchor = _dragAnchorItem;
+
+        _isPointerDown = false;
+        _hasDragStartPoint = false;
+        _dragAnchorItem = null;
+        HideMarqueeBox();
+
+        if (!wasDragging && anchor == null)
+        {
+            // Clicked in empty space without dragging -> deselect all (like Windows Explorer / Finder)
+            _viewModel.ClearDownloadsSelection();
+        }
+
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            await Task.Delay(50);
+            _isDragging = false;
+        });
+    }
+
+    private void OnDownloadRowPointerReleased(object? sender, PointerEventArgs e)
+    {
+        FinishDrag();
+    }
+
+    private void OnTablePointerReleased(object? sender, PointerEventArgs e)
+    {
+        FinishDrag();
+    }
+
+    private void HideMarqueeBox()
+    {
+        if (MarqueeSelectionBox != null)
+        {
+            MarqueeSelectionBox.IsVisible = false;
+            MarqueeSelectionBox.WidthRequest = 0;
+            MarqueeSelectionBox.HeightRequest = 0;
+            MarqueeSelectionBox.Margin = new Thickness(0);
+        }
+    }
+
+    private void OnDownloadsSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_viewModel == null || e.CurrentSelection == null) return;
+        var selectedItems = e.CurrentSelection.OfType<DownloadItemViewModel>().ToList();
+        _viewModel.SyncSelectionFromUi(selectedItems);
+    }
+
     private async void OnDownloadRowDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (_viewModel.SelectedDownload != null)
+        var target = (sender as VisualElement)?.BindingContext as DownloadItemViewModel ?? _viewModel.SelectedDownload;
+        if (target != null)
         {
-            await OpenProgressDialogAsync(_viewModel.SelectedDownload);
+            await OpenProgressDialogAsync(target);
         }
     }
 

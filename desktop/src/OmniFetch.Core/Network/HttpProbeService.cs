@@ -53,6 +53,11 @@ public partial class HttpProbeService : IHttpProbeService
         if (rangeResponse.StatusCode == HttpStatusCode.PartialContent) // HTTP 206
         {
             var result = ParseResponseHeaders(url, rangeResponse);
+            if (string.Equals(result.ContentType, "application/vnd.yt-ump", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The requested stream is a YouTube SABR UMP stream rather than direct media.");
+            }
+
             long? totalLength = null;
 
             if (rangeResponse.Content.Headers.ContentRange?.HasLength == true)
@@ -69,6 +74,11 @@ public partial class HttpProbeService : IHttpProbeService
         else if (rangeResponse.IsSuccessStatusCode) // HTTP 200 OK (server ignored Range header)
         {
             var result = ParseResponseHeaders(url, rangeResponse);
+            if (string.Equals(result.ContentType, "application/vnd.yt-ump", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The requested stream is a YouTube SABR UMP stream rather than direct media.");
+            }
+
             return result with
             {
                 SupportsRange = false

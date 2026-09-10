@@ -49,6 +49,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private DownloadItemViewModel? _selectedDownload;
 
+    public ObservableCollection<DownloadItemViewModel> SelectedDownloads { get; } = [];
+
+    [ObservableProperty]
+    private ObservableCollection<object> _selectedDownloadsList = [];
+
+    private bool _isSyncingSelection = false;
+
     [ObservableProperty]
     private string _searchText = string.Empty;
 
@@ -166,6 +173,201 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         SelectedCategory = category;
         ApplyCategoryFilter();
+    }
+
+    public void SelectDownload(DownloadItemViewModel item, bool isToggle = false, bool isRange = false)
+    {
+        if (isRange && SelectedDownload != null)
+        {
+            int idx1 = FilteredDownloads.IndexOf(SelectedDownload);
+            int idx2 = FilteredDownloads.IndexOf(item);
+            if (idx1 != -1 && idx2 != -1)
+            {
+                int start = Math.Min(idx1, idx2);
+                int end = Math.Max(idx1, idx2);
+
+                if (!isToggle)
+                {
+                    foreach (var d in AllDownloads)
+                    {
+                        d.IsSelected = false;
+                    }
+                    SelectedDownloads.Clear();
+                }
+
+                for (int i = start; i <= end; i++)
+                {
+                    var d = FilteredDownloads[i];
+                    d.IsSelected = true;
+                    if (!SelectedDownloads.Contains(d))
+                    {
+                        SelectedDownloads.Add(d);
+                    }
+                }
+                SelectedDownload = item;
+                SyncSelectedDownloadsList();
+                return;
+            }
+        }
+
+        if (isToggle)
+        {
+            item.IsSelected = !item.IsSelected;
+            if (item.IsSelected)
+            {
+                if (!SelectedDownloads.Contains(item))
+                {
+                    SelectedDownloads.Add(item);
+                }
+                SelectedDownload = item;
+            }
+            else
+            {
+                SelectedDownloads.Remove(item);
+                if (SelectedDownload == item)
+                {
+                    SelectedDownload = SelectedDownloads.LastOrDefault();
+                }
+            }
+            SyncSelectedDownloadsList();
+            return;
+        }
+
+        // Single selection (standard left-click)
+        foreach (var d in AllDownloads)
+        {
+            if (d != item)
+            {
+                d.IsSelected = false;
+            }
+        }
+        item.IsSelected = true;
+        SelectedDownloads.Clear();
+        SelectedDownloads.Add(item);
+        SelectedDownload = item;
+        SyncSelectedDownloadsList();
+    }
+
+    public void HandleRowRightClick(DownloadItemViewModel item)
+    {
+        // If already part of multi-selection, preserve selection and activate this item
+        if (item.IsSelected)
+        {
+            SelectedDownload = item;
+            return;
+        }
+
+        // Otherwise, select solely this item
+        SelectDownload(item, isToggle: false, isRange: false);
+    }
+
+    public void SelectRange(DownloadItemViewModel startItem, DownloadItemViewModel endItem, bool keepExisting = false)
+    {
+        int idx1 = FilteredDownloads.IndexOf(startItem);
+        int idx2 = FilteredDownloads.IndexOf(endItem);
+        if (idx1 == -1 || idx2 == -1) return;
+
+        SelectRangeByIndex(idx1, idx2, keepExisting);
+    }
+
+    public void SelectRangeByIndex(int startIndex, int endIndex, bool keepExisting = false)
+    {
+        if (FilteredDownloads.Count == 0) return;
+
+        int start = Math.Clamp(Math.Min(startIndex, endIndex), 0, FilteredDownloads.Count - 1);
+        int end = Math.Clamp(Math.Max(startIndex, endIndex), 0, FilteredDownloads.Count - 1);
+
+        if (!keepExisting)
+        {
+            foreach (var d in AllDownloads)
+            {
+                d.IsSelected = false;
+            }
+            SelectedDownloads.Clear();
+        }
+
+        for (int i = start; i <= end; i++)
+        {
+            var d = FilteredDownloads[i];
+            d.IsSelected = true;
+            if (!SelectedDownloads.Contains(d))
+            {
+                SelectedDownloads.Add(d);
+            }
+        }
+
+        SelectedDownload = FilteredDownloads[Math.Clamp(endIndex, 0, FilteredDownloads.Count - 1)];
+        SyncSelectedDownloadsList();
+    }
+
+    [RelayCommand]
+    public void SelectAllDownloads()
+    {
+        foreach (var d in FilteredDownloads)
+        {
+            d.IsSelected = true;
+            if (!SelectedDownloads.Contains(d))
+            {
+                SelectedDownloads.Add(d);
+            }
+        }
+        SelectedDownload = FilteredDownloads.LastOrDefault();
+        SyncSelectedDownloadsList();
+    }
+
+    [RelayCommand]
+    public void ClearDownloadsSelection()
+    {
+        foreach (var d in AllDownloads)
+        {
+            d.IsSelected = false;
+        }
+        SelectedDownloads.Clear();
+        SelectedDownload = null;
+        SyncSelectedDownloadsList();
+    }
+
+    public void SyncSelectionFromUi(IEnumerable<DownloadItemViewModel> selection)
+    {
+        if (_isSyncingSelection) return;
+
+        var selectedSet = new HashSet<DownloadItemViewModel>(selection);
+        foreach (var d in FilteredDownloads)
+        {
+            d.IsSelected = selectedSet.Contains(d);
+        }
+
+        SelectedDownloads.Clear();
+        foreach (var d in selectedSet)
+        {
+            SelectedDownloads.Add(d);
+        }
+        SelectedDownload = SelectedDownloads.LastOrDefault();
+    }
+
+    private void SyncSelectedDownloadsList()
+    {
+        _isSyncingSelection = true;
+        try
+        {
+            SelectedDownloadsList.Clear();
+            foreach (var d in SelectedDownloads)
+            {
+                SelectedDownloadsList.Add(d);
+            }
+        }
+        finally
+        {
+            _isSyncingSelection = false;
+        }
+    }
+
+    public List<DownloadItemViewModel> GetSelectedOrActiveDownloads()
+    {
+        var items = FilteredDownloads.Where(d => d.IsSelected).ToList();
+        if (items.Count > 0) return items;
+        if (SelectedDownload != null) return [SelectedDownload];
+        return [];
     }
 
     private void ApplyCategoryFilter()
@@ -403,28 +605,62 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async Task ResumeAsync(DownloadItemViewModel? item = null)
     {
-        var download = item ?? SelectedDownload;
-        if (download == null || !download.CanResume) return;
+        List<DownloadItemViewModel> targets;
+        if (item != null && !item.IsSelected)
+        {
+            targets = [item];
+        }
+        else
+        {
+            targets = GetSelectedOrActiveDownloads();
+            if (targets.Count == 0 && item != null)
+            {
+                targets = [item];
+            }
+        }
 
-        download.SetStatus(DownloadStatus.Downloading);
+        var resumable = targets.Where(d => d.CanResume).ToList();
+        if (resumable.Count == 0) return;
 
-        var cts = new CancellationTokenSource();
-        _activeTokens[download.JobId] = cts;
-        await Task.Run(() => _engine.ResumeDownloadAsync(download.JobId, cancellationToken: cts.Token));
+        foreach (var download in resumable)
+        {
+            download.SetStatus(DownloadStatus.Downloading);
+            var cts = new CancellationTokenSource();
+            _activeTokens[download.JobId] = cts;
+            _ = Task.Run(() => _engine.ResumeDownloadAsync(download.JobId, cancellationToken: cts.Token));
+        }
+        await Task.CompletedTask;
     }
 
     [RelayCommand]
     public async Task StopAsync(DownloadItemViewModel? item = null)
     {
-        var download = item ?? SelectedDownload;
-        if (download == null || !download.CanPause) return;
-
-        if (_activeTokens.TryRemove(download.JobId, out var cts))
+        List<DownloadItemViewModel> targets;
+        if (item != null && !item.IsSelected)
         {
-            cts.Cancel();
-            cts.Dispose();
+            targets = [item];
         }
-        download.SetStatus(DownloadStatus.Paused);
+        else
+        {
+            targets = GetSelectedOrActiveDownloads();
+            if (targets.Count == 0 && item != null)
+            {
+                targets = [item];
+            }
+        }
+
+        var pausable = targets.Where(d => d.CanPause).ToList();
+        if (pausable.Count == 0) return;
+
+        foreach (var download in pausable)
+        {
+            if (_activeTokens.TryRemove(download.JobId, out var cts))
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }
+            download.SetStatus(DownloadStatus.Paused);
+        }
         await Task.CompletedTask;
     }
 
@@ -467,13 +703,30 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async Task DeleteAsync(DownloadItemViewModel? item = null)
     {
-        var download = item ?? SelectedDownload;
-        if (download == null) return;
+        List<DownloadItemViewModel> targets;
+        if (item != null && !item.IsSelected)
+        {
+            targets = [item];
+        }
+        else
+        {
+            targets = GetSelectedOrActiveDownloads();
+            if (targets.Count == 0 && item != null)
+            {
+                targets = [item];
+            }
+        }
+
+        if (targets.Count == 0) return;
+
+        string promptDesc = targets.Count == 1 
+            ? targets[0].FileName 
+            : $"{targets.Count} selected downloads";
 
         string choice = "Delete from List & Disk";
         if (RequestDeleteConfirmationHandler != null)
         {
-            choice = await RequestDeleteConfirmationHandler.Invoke(download.FileName);
+            choice = await RequestDeleteConfirmationHandler.Invoke(promptDesc);
             if (string.IsNullOrWhiteSpace(choice) || choice.Equals("Cancel", StringComparison.OrdinalIgnoreCase))
             {
                 return; // User cancelled
@@ -482,40 +735,47 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         bool deleteFromDisk = choice.Contains("Disk", StringComparison.OrdinalIgnoreCase);
 
-        // Cancel active download if currently running
-        if (download.IsDownloading && _activeTokens.TryRemove(download.JobId, out var cts))
+        foreach (var download in targets)
         {
-            cts.Cancel();
-            cts.Dispose();
-        }
-
-        // Permanently delete physical file from disk if requested
-        if (deleteFromDisk)
-        {
-            try
+            // Cancel active download if currently running
+            if (download.IsDownloading && _activeTokens.TryRemove(download.JobId, out var cts))
             {
-                if (!string.IsNullOrWhiteSpace(download.DestinationFilePath) && File.Exists(download.DestinationFilePath))
+                cts.Cancel();
+                cts.Dispose();
+            }
+
+            // Permanently delete physical file from disk if requested
+            if (deleteFromDisk)
+            {
+                try
                 {
-                    File.Delete(download.DestinationFilePath);
+                    if (!string.IsNullOrWhiteSpace(download.DestinationFilePath) && File.Exists(download.DestinationFilePath))
+                    {
+                        File.Delete(download.DestinationFilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[MainViewModel.DeleteAsync] Could not delete physical file: {ex.Message}");
                 }
             }
-            catch (Exception ex)
+
+            if (_repository != null)
             {
-                Console.WriteLine($"[MainViewModel.DeleteAsync] Could not delete physical file: {ex.Message}");
+                await _repository.DeleteJobAsync(download.JobId);
             }
+
+            AllDownloads.Remove(download);
+            SelectedDownloads.Remove(download);
+            SelectedDownloadsList.Remove(download);
         }
 
-        if (_repository != null)
-        {
-            await _repository.DeleteJobAsync(download.JobId);
-        }
-
-        AllDownloads.Remove(download);
         ApplyCategoryFilter();
         UpdateCategoryCounts();
-        if (SelectedDownload == download)
+
+        if (SelectedDownload != null && !AllDownloads.Contains(SelectedDownload))
         {
-            SelectedDownload = null;
+            SelectedDownload = SelectedDownloads.LastOrDefault();
         }
     }
 
@@ -569,10 +829,24 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void RevealInFinder(DownloadItemViewModel? item = null)
     {
-        var target = item ?? SelectedDownload;
-        if (target == null) return;
+        List<DownloadItemViewModel> targets;
+        if (item != null && !item.IsSelected)
+        {
+            targets = [item];
+        }
+        else
+        {
+            targets = GetSelectedOrActiveDownloads();
+            if (targets.Count == 0 && item != null)
+            {
+                targets = [item];
+            }
+        }
 
-        FolderPickerHelper.RevealInFinder(target.DestinationFilePath);
+        foreach (var target in targets)
+        {
+            FolderPickerHelper.RevealInFinder(target.DestinationFilePath);
+        }
     }
 
     [RelayCommand]

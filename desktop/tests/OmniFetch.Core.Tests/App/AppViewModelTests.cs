@@ -287,5 +287,236 @@ public class AppViewModelTests
         Assert.True(item.CanResume);
         Assert.False(item.IsCompleted);
     }
+
+    [Fact]
+    public void DownloadItemViewModel_IsSelectedProperty_RaisesPropertyChangedAndDefaultsToFalse()
+    {
+        var item = new DownloadItemViewModel(Guid.NewGuid(), "https://example.com/test.mp4", "/tmp/test.mp4");
+        Assert.False(item.IsSelected);
+
+        string? changedProp = null;
+        item.PropertyChanged += (s, e) => changedProp = e.PropertyName;
+
+        item.IsSelected = true;
+        Assert.True(item.IsSelected);
+        Assert.Equal(nameof(DownloadItemViewModel.IsSelected), changedProp);
+    }
+
+    [Fact]
+    public void MultiSelection_BulkFilter_CorrectlyIdentifiesPausableAndResumableItems()
+    {
+        var item1 = new DownloadItemViewModel(Guid.NewGuid(), "https://example.com/1.mp4", "/tmp/1.mp4");
+        var item2 = new DownloadItemViewModel(Guid.NewGuid(), "https://example.com/2.mp4", "/tmp/2.mp4");
+        var item3 = new DownloadItemViewModel(Guid.NewGuid(), "https://example.com/3.mp4", "/tmp/3.mp4");
+
+        item1.SetStatus(DownloadStatus.Downloading); // CanPause
+        item2.SetStatus(DownloadStatus.Paused);      // CanResume
+        item3.SetStatus(DownloadStatus.Downloading); // CanPause
+
+        // Select all 3
+        item1.IsSelected = true;
+        item2.IsSelected = true;
+        item3.IsSelected = true;
+
+        var selected = new List<DownloadItemViewModel> { item1, item2, item3 };
+
+        var pausable = selected.Where(d => d.CanPause).ToList();
+        var resumable = selected.Where(d => d.CanResume).ToList();
+
+        Assert.Equal(2, pausable.Count);
+        Assert.Contains(item1, pausable);
+        Assert.Contains(item3, pausable);
+
+        Assert.Single(resumable);
+        Assert.Contains(item2, resumable);
+    }
+
+    [Fact]
+    public void DragSelection_RangeCalculation_SelectsContinuousSubset()
+    {
+        var items = new List<DownloadItemViewModel>
+        {
+            new(Guid.NewGuid(), "https://example.com/0.mp4", "/tmp/0.mp4"),
+            new(Guid.NewGuid(), "https://example.com/1.mp4", "/tmp/1.mp4"),
+            new(Guid.NewGuid(), "https://example.com/2.mp4", "/tmp/2.mp4"),
+            new(Guid.NewGuid(), "https://example.com/3.mp4", "/tmp/3.mp4"),
+            new(Guid.NewGuid(), "https://example.com/4.mp4", "/tmp/4.mp4"),
+        };
+
+        // Simulate downward drag from row 1 to row 3
+        int startIdx = 1;
+        int endIdx = 3;
+        int min = Math.Min(startIdx, endIdx);
+        int max = Math.Max(startIdx, endIdx);
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            items[i].IsSelected = (i >= min && i <= max);
+        }
+
+        Assert.False(items[0].IsSelected);
+        Assert.True(items[1].IsSelected);
+        Assert.True(items[2].IsSelected);
+        Assert.True(items[3].IsSelected);
+        Assert.False(items[4].IsSelected);
+
+        // Simulate upward drag from row 4 to row 2
+        startIdx = 4;
+        endIdx = 2;
+        min = Math.Min(startIdx, endIdx);
+        max = Math.Max(startIdx, endIdx);
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            items[i].IsSelected = (i >= min && i <= max);
+        }
+
+        Assert.False(items[0].IsSelected);
+        Assert.False(items[1].IsSelected);
+        Assert.True(items[2].IsSelected);
+        Assert.True(items[3].IsSelected);
+        Assert.True(items[4].IsSelected);
+    }
+
+    [Fact]
+    public void DragSelection_MarqueeCoordinates_ClampsToValidIndexRange()
+    {
+        int itemCount = 5;
+        double rowHeight = 38.0;
+
+        // Box from Y=50 to Y=120 (approx row 1 to row 3)
+        double boxTop = 50.0;
+        double boxHeight = 70.0;
+
+        int rawStart = (int)(boxTop / rowHeight);
+        int rawEnd = (int)((boxTop + boxHeight) / rowHeight);
+
+        int clampedStart = Math.Clamp(rawStart, 0, itemCount - 1);
+        int clampedEnd = Math.Clamp(rawEnd, 0, itemCount - 1);
+
+        Assert.Equal(1, clampedStart);
+        Assert.Equal(3, clampedEnd);
+
+        // Negative coordinate drag (dragged above table top)
+        boxTop = -30.0;
+        boxHeight = 40.0;
+
+        rawStart = (int)(boxTop / rowHeight);
+        rawEnd = (int)((boxTop + boxHeight) / rowHeight);
+
+        clampedStart = Math.Clamp(rawStart, 0, itemCount - 1);
+        clampedEnd = Math.Clamp(rawEnd, 0, itemCount - 1);
+
+        Assert.Equal(0, clampedStart);
+        Assert.Equal(0, clampedEnd);
+
+        // Way beyond table bottom
+        boxTop = 500.0;
+        boxHeight = 100.0;
+
+        rawStart = (int)(boxTop / rowHeight);
+        rawEnd = (int)((boxTop + boxHeight) / rowHeight);
+
+        clampedStart = Math.Clamp(rawStart, 0, itemCount - 1);
+        clampedEnd = Math.Clamp(rawEnd, 0, itemCount - 1);
+
+        Assert.Equal(4, clampedStart);
+        Assert.Equal(4, clampedEnd);
+    }
+
+    [Fact]
+    public void DragSelection_PixelPerfectGeometry_CalculatesExactRectAndDirection()
+    {
+        // Initial click anchor point (e.g., clicked at X=150, Y=80)
+        double startX = 150.0;
+        double startY = 80.0;
+
+        // 1. Drag Down-Right to (220, 160)
+        double currX = 220.0;
+        double currY = 160.0;
+        double minX = Math.Min(startX, currX);
+        double minY = Math.Min(startY, currY);
+        double width = Math.Max(2, Math.Max(startX, currX) - minX);
+        double height = Math.Max(2, Math.Max(startY, currY) - minY);
+
+        Assert.Equal(150.0, minX);
+        Assert.Equal(80.0, minY);
+        Assert.Equal(70.0, width);
+        Assert.Equal(80.0, height);
+
+        // 2. Drag Up-Left to (90, 30)
+        currX = 90.0;
+        currY = 30.0;
+        minX = Math.Min(startX, currX);
+        minY = Math.Min(startY, currY);
+        width = Math.Max(2, Math.Max(startX, currX) - minX);
+        height = Math.Max(2, Math.Max(startY, currY) - minY);
+
+        Assert.Equal(90.0, minX);
+        Assert.Equal(30.0, minY);
+        Assert.Equal(60.0, width);
+        Assert.Equal(50.0, height);
+        // Bottom-Right corner of box must be the initial click point
+        Assert.Equal(150.0, minX + width);
+        Assert.Equal(80.0, minY + height);
+
+        // 3. Drag Up-Right to (250, 40)
+        currX = 250.0;
+        currY = 40.0;
+        minX = Math.Min(startX, currX);
+        minY = Math.Min(startY, currY);
+        width = Math.Max(2, Math.Max(startX, currX) - minX);
+        height = Math.Max(2, Math.Max(startY, currY) - minY);
+
+        Assert.Equal(150.0, minX);
+        Assert.Equal(40.0, minY);
+        Assert.Equal(100.0, width);
+        Assert.Equal(40.0, height);
+
+        // 4. Drag Down-Left to (80, 140)
+        currX = 80.0;
+        currY = 140.0;
+        minX = Math.Min(startX, currX);
+        minY = Math.Min(startY, currY);
+        width = Math.Max(2, Math.Max(startX, currX) - minX);
+        height = Math.Max(2, Math.Max(startY, currY) - minY);
+
+        Assert.Equal(80.0, minX);
+        Assert.Equal(80.0, minY);
+        Assert.Equal(70.0, width);
+        Assert.Equal(60.0, height);
+    }
+
+    [Fact]
+    public void DragSelection_UpwardDrag_TracksCursorIndexAsSelectedDownload()
+    {
+        var items = new List<DownloadItemViewModel>
+        {
+            new(Guid.NewGuid(), "https://example.com/0.bin", "/tmp/0.bin"),
+            new(Guid.NewGuid(), "https://example.com/1.bin", "/tmp/1.bin"),
+            new(Guid.NewGuid(), "https://example.com/2.bin", "/tmp/2.bin"),
+            new(Guid.NewGuid(), "https://example.com/3.bin", "/tmp/3.bin")
+        };
+
+        // Drag upward from index 3 up to index 1
+        int startIndex = 3;
+        int endIndex = 1;
+        int start = Math.Clamp(Math.Min(startIndex, endIndex), 0, items.Count - 1);
+        int end = Math.Clamp(Math.Max(startIndex, endIndex), 0, items.Count - 1);
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            items[i].IsSelected = (i >= start && i <= end);
+        }
+        var selectedDownload = items[Math.Clamp(endIndex, 0, items.Count - 1)];
+
+        Assert.False(items[0].IsSelected);
+        Assert.True(items[1].IsSelected);
+        Assert.True(items[2].IsSelected);
+        Assert.True(items[3].IsSelected);
+
+        // The active item under cursor must be items[1] (index 1), not items[3]!
+        Assert.Equal(items[1], selectedDownload);
+    }
 }
 

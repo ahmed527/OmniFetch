@@ -27,6 +27,10 @@
             <MenuFlyoutItem Text="Delete Selected" Command="{Binding DeleteCommand}" />
             <MenuFlyoutItem Text="Delete Completed" Command="{Binding DeleteCompletedCommand}" />
         </MenuBarItem>
+        <MenuBarItem Text="Edit">
+            <MenuFlyoutItem Text="Select All" Command="{Binding SelectAllDownloadsCommand}" />
+            <MenuFlyoutItem Text="Deselect All" Command="{Binding ClearDownloadsSelectionCommand}" />
+        </MenuBarItem>
         <MenuBarItem Text="Downloads">
             <MenuFlyoutItem Text="Resume" Command="{Binding ResumeCommand}" />
             <MenuFlyoutItem Text="Stop" Command="{Binding StopCommand}" />
@@ -115,90 +119,121 @@
             <Grid Grid.Column="1" RowDefinitions="Auto,*" BackgroundColor="White" VerticalOptions="Fill" HorizontalOptions="Fill">
 
                 <!-- Table Column Headers -->
-                <Border Grid.Row="0" BackgroundColor="#E2E8F0" Stroke="#94A3B8" StrokeThickness="0,0,0,1" Padding="8,6">
-                    <Grid ColumnDefinitions="200,85,100,85,95,120,170,*" ColumnSpacing="6">
-                        <Label Grid.Column="0" Text="File Name" Style="{StaticResource IdmHeaderLabel}" />
-                        <Label Grid.Column="1" Text="Size" Style="{StaticResource IdmHeaderLabel}" />
-                        <Label Grid.Column="2" Text="Status" Style="{StaticResource IdmHeaderLabel}" />
-                        <Label Grid.Column="3" Text="Time Left" Style="{StaticResource IdmHeaderLabel}" />
-                        <Label Grid.Column="4" Text="Transfer Rate" Style="{StaticResource IdmHeaderLabel}" />
-                        <Label Grid.Column="5" Text="Last Try Date" Style="{StaticResource IdmHeaderLabel}" />
-                        <Label Grid.Column="6" Text="Save To" Style="{StaticResource IdmHeaderLabel}" />
-                        <Label Grid.Column="7" Text="Description" Style="{StaticResource IdmHeaderLabel}" />
+                <Border Grid.Row="0" BackgroundColor="#E2E8F0" Stroke="#94A3B8" StrokeThickness="0,0,0,1" Padding="6,6,8,6">
+                    <Grid ColumnDefinitions="26,190,80,95,80,90,115,150,*" ColumnSpacing="6">
+                        <Label Grid.Column="0" Text="" HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="File Name" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="2" Text="Size" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="3" Text="Status" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="4" Text="Time Left" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="5" Text="Transfer Rate" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="6" Text="Last Try Date" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="7" Text="Save To" Style="{StaticResource IdmHeaderLabel}" />
+                        <Label Grid.Column="8" Text="Description" Style="{StaticResource IdmHeaderLabel}" LineBreakMode="NoWrap" />
                     </Grid>
                 </Border>
 
-                <!-- Downloads Rows Collection -->
-                <CollectionView 
-                    Grid.Row="1" 
-                    ItemsSource="{Binding FilteredDownloads}" 
-                    SelectionMode="Single" 
-                    SelectedItem="{Binding SelectedDownload, Mode=TwoWay}"
-                    VerticalOptions="Fill" 
-                    HorizontalOptions="Fill">
-                    <CollectionView.EmptyView>
-                        <VerticalStackLayout Spacing="8" HorizontalOptions="Center" VerticalOptions="Center" Margin="30">
-                            <Image Source="idm_add.png" WidthRequest="48" HeightRequest="48" HorizontalOptions="Center" Opacity="0.5" />
-                            <Label Text="No downloads in this category" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource IdmTextSecondary}" HorizontalOptions="Center" />
-                            <Label Text="Click 'Add URL' or download files from Chrome to begin accelerated transfers" FontSize="12" TextColor="{StaticResource IdmSidebarMuted}" HorizontalOptions="Center" />
-                        </VerticalStackLayout>
-                    </CollectionView.EmptyView>
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:DownloadItemViewModel">
-                            <Border Stroke="#E2E8F0" StrokeThickness="0,0,0,1" Padding="8,7" BackgroundColor="White">
-                                <FlyoutBase.ContextFlyout>
-                                    <MenuFlyout>
-                                        <MenuFlyoutItem Text="Reveal in Finder" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=RevealInFinderCommand}" CommandParameter="{Binding .}" />
-                                        <MenuFlyoutItem Text="Open File" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=OpenFileCommand}" CommandParameter="{Binding .}" />
-                                        <MenuFlyoutItem Text="Open Containing Folder" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=OpenFolderCommand}" CommandParameter="{Binding .}" />
-                                        <MenuFlyoutSeparator />
-                                        <MenuFlyoutItem Text="Resume" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=ResumeCommand}" CommandParameter="{Binding .}" IsEnabled="{Binding CanResume}" />
-                                        <MenuFlyoutItem Text="Stop" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=StopCommand}" CommandParameter="{Binding .}" IsEnabled="{Binding CanStop}" />
-                                        <MenuFlyoutSeparator />
-                                        <MenuFlyoutItem Text="Delete" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=DeleteCommand}" CommandParameter="{Binding .}" />
-                                    </MenuFlyout>
-                                </FlyoutBase.ContextFlyout>
-                                <Border.Triggers>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
-                                        <Setter Property="BackgroundColor" Value="#D0E5FE" />
-                                    </DataTrigger>
-                                </Border.Triggers>
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer NumberOfTapsRequired="2" Tapped="OnDownloadRowDoubleTapped" />
-                                </Border.GestureRecognizers>
+                <!-- Downloads Container with Marquee Overlay -->
+                <Grid x:Name="ListContainer" Grid.Row="1" VerticalOptions="Fill" HorizontalOptions="Fill">
+                    <Grid.GestureRecognizers>
+                        <PanGestureRecognizer PanUpdated="OnTablePanUpdated" />
+                        <PointerGestureRecognizer 
+                            PointerPressed="OnTablePointerPressed"
+                            PointerMoved="OnTablePointerMoved"
+                            PointerReleased="OnTablePointerReleased" />
+                    </Grid.GestureRecognizers>
 
-                                <Grid ColumnDefinitions="200,85,100,85,95,120,170,*" ColumnSpacing="6" VerticalOptions="Center">
-                                    <!-- File Name & Progress -->
-                                    <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
-                                        <Label Text="{Binding FileName}" FontSize="12" FontAttributes="Bold" LineBreakMode="MiddleTruncation" TextColor="{StaticResource IdmTextPrimary}" />
-                                        <ProgressBar Progress="{Binding ProgressFraction}" ProgressColor="{StaticResource IdmSecondary}" HeightRequest="4" IsVisible="{Binding IsDownloading}" />
-                                    </VerticalStackLayout>
+                    <CollectionView 
+                        x:Name="DownloadsCollectionView"
+                        ItemsSource="{Binding FilteredDownloads}" 
+                        SelectionMode="Multiple" 
+                        SelectedItems="{Binding SelectedDownloadsList, Mode=TwoWay}"
+                        SelectionChanged="OnDownloadsSelectionChanged"
+                        VerticalOptions="Fill" 
+                        HorizontalOptions="Fill">
+                        <CollectionView.EmptyView>
+                            <VerticalStackLayout Spacing="8" HorizontalOptions="Center" VerticalOptions="Center" Margin="30">
+                                <Image Source="idm_add.png" WidthRequest="48" HeightRequest="48" HorizontalOptions="Center" Opacity="0.5" />
+                                <Label Text="No downloads in this category" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource IdmTextSecondary}" HorizontalOptions="Center" />
+                                <Label Text="Click 'Add URL' or download files from Chrome to begin accelerated transfers" FontSize="12" TextColor="{StaticResource IdmSidebarMuted}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DownloadItemViewModel">
+                                <Border Stroke="#E2E8F0" StrokeThickness="0,0,0,1" Padding="6,6,8,6" BackgroundColor="White">
+                                    <FlyoutBase.ContextFlyout>
+                                        <MenuFlyout>
+                                            <MenuFlyoutItem Text="Reveal in Finder" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=RevealInFinderCommand}" CommandParameter="{Binding .}" />
+                                            <MenuFlyoutItem Text="Open File" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=OpenFileCommand}" CommandParameter="{Binding .}" />
+                                            <MenuFlyoutItem Text="Open Containing Folder" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=OpenFolderCommand}" CommandParameter="{Binding .}" />
+                                            <MenuFlyoutSeparator />
+                                            <MenuFlyoutItem Text="Resume" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=ResumeCommand}" CommandParameter="{Binding .}" IsEnabled="{Binding CanResume}" />
+                                            <MenuFlyoutItem Text="Stop" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=StopCommand}" CommandParameter="{Binding .}" IsEnabled="{Binding CanStop}" />
+                                            <MenuFlyoutSeparator />
+                                            <MenuFlyoutItem Text="Delete" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=DeleteCommand}" CommandParameter="{Binding .}" />
+                                        </MenuFlyout>
+                                    </FlyoutBase.ContextFlyout>
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="#D0E5FE" />
+                                        </DataTrigger>
+                                    </Border.Triggers>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer NumberOfTapsRequired="1" Tapped="OnDownloadRowTapped" />
+                                        <TapGestureRecognizer NumberOfTapsRequired="2" Tapped="OnDownloadRowDoubleTapped" />
+                                        <PointerGestureRecognizer 
+                                            PointerPressed="OnDownloadRowPointerPressed"
+                                            PointerEntered="OnDownloadRowPointerEntered"
+                                            PointerReleased="OnDownloadRowPointerReleased" />
+                                    </Border.GestureRecognizers>
 
-                                    <!-- Size -->
-                                    <Label Grid.Column="1" Text="{Binding FileSizeText}" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+                                    <Grid ColumnDefinitions="26,190,80,95,80,90,115,150,*" ColumnSpacing="6" VerticalOptions="Center">
+                                        <!-- Multi-Select Checkbox -->
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" Color="#2563EB" VerticalOptions="Center" HorizontalOptions="Center" WidthRequest="20" HeightRequest="20" Margin="0" />
 
-                                    <!-- Status -->
-                                    <Label Grid.Column="2" Text="{Binding StatusText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmPrimary}" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                                        <!-- File Name & Progress -->
+                                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                            <Label Text="{Binding FileName}" FontSize="12" FontAttributes="Bold" LineBreakMode="MiddleTruncation" TextColor="{StaticResource IdmTextPrimary}" />
+                                            <ProgressBar Progress="{Binding ProgressFraction}" ProgressColor="{StaticResource IdmSecondary}" HeightRequest="4" IsVisible="{Binding IsDownloading}" />
+                                        </VerticalStackLayout>
 
-                                    <!-- Time Left -->
-                                    <Label Grid.Column="3" Text="{Binding TimeLeftText}" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+                                        <!-- Size -->
+                                        <Label Grid.Column="2" Text="{Binding FileSizeText}" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
 
-                                    <!-- Transfer Rate -->
-                                    <Label Grid.Column="4" Text="{Binding TransferRateText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmSecondary}" VerticalOptions="Center" />
+                                        <!-- Status -->
+                                        <Label Grid.Column="3" Text="{Binding StatusText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmPrimary}" VerticalOptions="Center" LineBreakMode="TailTruncation" />
 
-                                    <!-- Last Try Date -->
-                                    <Label Grid.Column="5" Text="{Binding LastTryDateText}" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+                                        <!-- Time Left -->
+                                        <Label Grid.Column="4" Text="{Binding TimeLeftText}" FontSize="12" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
 
-                                    <!-- Save To Folder -->
-                                    <Label Grid.Column="6" Text="{Binding DestinationFolder}" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" LineBreakMode="MiddleTruncation" />
+                                        <!-- Transfer Rate -->
+                                        <Label Grid.Column="5" Text="{Binding TransferRateText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource IdmSecondary}" VerticalOptions="Center" />
 
-                                    <!-- Description / URL -->
-                                    <Label Grid.Column="7" Text="{Binding Url}" FontSize="11" TextColor="{StaticResource IdmSidebarMuted}" VerticalOptions="Center" LineBreakMode="MiddleTruncation" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                                        <!-- Last Try Date -->
+                                        <Label Grid.Column="6" Text="{Binding LastTryDateText}" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" />
+
+                                        <!-- Save To Folder -->
+                                        <Label Grid.Column="7" Text="{Binding DestinationFolder}" FontSize="11" TextColor="{StaticResource IdmTextSecondary}" VerticalOptions="Center" LineBreakMode="MiddleTruncation" />
+
+                                        <!-- Description / URL -->
+                                        <Label Grid.Column="8" Text="{Binding Url}" FontSize="11" TextColor="{StaticResource IdmSidebarMuted}" VerticalOptions="Center" LineBreakMode="MiddleTruncation" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <!-- Marquee Drag Selection Overlay Box -->
+                    <Border x:Name="MarqueeSelectionBox"
+                            IsVisible="False"
+                            InputTransparent="True"
+                            BackgroundColor="#203B82F6"
+                            Stroke="#3B82F6"
+                            StrokeThickness="1"
+                            StrokeDashArray="3,2"
+                            HorizontalOptions="Start"
+                            VerticalOptions="Start" />
+                </Grid>
 
             </Grid>
         </Grid>
