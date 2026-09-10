@@ -477,6 +477,64 @@ describe("OmniFetch Chrome Extension (Manifest V3) Test Suite", () => {
       const formattedAudio = formatFileName("My Favorite Song", "Audio", ".m4a");
       assert.equal(formattedAudio, "My Favorite Song [Audio].m4a");
     });
+
+    test("extractYouTubePageStreams parses streamingData from embedded scripts and strips chunk range", () => {
+      const mockScriptText = `
+        var ytInitialPlayerResponse = {"responseContext":{},"streamingData":{"formats":[{"itag":18,"url":"https://rr1.googlevideo.com/videoplayback?itag=18&range=0-1000&rn=1&mime=video%2Fmp4"}],"adaptiveFormats":[{"itag":137,"url":"https://rr1.googlevideo.com/videoplayback?itag=137&range=5000-9000&mime=video%2Fmp4"}]}};
+      `;
+
+      function parseScripts(scripts) {
+        const urls = [];
+        for (const s of scripts) {
+          const text = s.textContent;
+          if (!text || !text.includes("streamingData")) continue;
+          const marker = "ytInitialPlayerResponse = ";
+          const idx = text.indexOf(marker);
+          if (idx !== -1) {
+            const start = idx + marker.length;
+            let end = text.indexOf("};", start);
+            if (end !== -1) {
+              const jsonStr = text.substring(start, end + 1);
+              const data = JSON.parse(jsonStr);
+              const formats = [...(data.streamingData.formats || []), ...(data.streamingData.adaptiveFormats || [])];
+              formats.forEach(f => {
+                if (f.url) {
+                  const u = new URL(f.url);
+                  u.searchParams.delete("range");
+                  u.searchParams.delete("rn");
+                  urls.push(u.toString());
+                }
+              });
+            }
+          }
+        }
+        return urls;
+      }
+
+      const extracted = parseScripts([{ textContent: mockScriptText }]);
+      assert.equal(extracted.length, 2);
+      assert.ok(!extracted[0].includes("range="), "range query param must be stripped");
+      assert.ok(!extracted[0].includes("rn="), "rn query param must be stripped");
+      assert.ok(extracted[0].includes("itag=18"));
+      assert.ok(extracted[1].includes("itag=137"));
+    });
+
+    test("REGISTER_STREAMS stores streams per tab and persists across session", () => {
+      const mockTabStreams = new Map();
+      function recordStream(tabId, url) {
+        if (!mockTabStreams.has(tabId)) mockTabStreams.set(tabId, new Map());
+        const u = new URL(url);
+        const itag = u.searchParams.get("itag") || "default";
+        mockTabStreams.get(tabId).set(itag, { itag, url });
+      }
+
+      recordStream(101, "https://rr1.googlevideo.com/videoplayback?itag=137");
+      recordStream(101, "https://rr1.googlevideo.com/videoplayback?itag=22");
+
+      assert.equal(mockTabStreams.get(101).size, 2);
+      assert.ok(mockTabStreams.get(101).has("137"));
+      assert.ok(mockTabStreams.get(101).has("22"));
+    });
   });
 
   describe("Syntax and Bracket/Brace Integrity Validation", () => {

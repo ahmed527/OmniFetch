@@ -41,6 +41,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<DownloadItemViewModel> FilteredDownloads { get; } = [];
     public ObservableCollection<CategoryItem> Categories { get; } = [];
 
+    public OmniFetchSettings CurrentSettings => _settingsService?.GetSettings() ?? new OmniFetchSettings();
+
     [ObservableProperty]
     private CategoryItem? _selectedCategory;
 

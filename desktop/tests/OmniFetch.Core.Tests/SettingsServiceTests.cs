@@ -32,6 +32,7 @@ public class SettingsServiceTests : IDisposable
         Assert.NotNull(settings);
         Assert.True(settings.ShowStartDialog);
         Assert.True(settings.ShowCompleteDialog);
+        Assert.True(settings.AutoCloseProgressDialogOnCompletion);
         Assert.Equal(8, settings.MaxConnections);
         Assert.False(string.IsNullOrWhiteSpace(settings.DefaultDownloadDirectory));
         Assert.True(settings.CategoryDirectories.ContainsKey("Video"));
@@ -48,6 +49,7 @@ public class SettingsServiceTests : IDisposable
         settings.CategoryDirectories["Video"] = customVideoDir;
         settings.MaxConnections = 16;
         settings.ShowStartDialog = false;
+        settings.AutoCloseProgressDialogOnCompletion = false;
 
         await service.SaveSettingsAsync(settings);
 
@@ -57,6 +59,7 @@ public class SettingsServiceTests : IDisposable
 
         Assert.Equal(16, reloaded.MaxConnections);
         Assert.False(reloaded.ShowStartDialog);
+        Assert.False(reloaded.AutoCloseProgressDialogOnCompletion);
         Assert.Equal(customVideoDir, reloaded.CategoryDirectories["Video"]);
     }
 

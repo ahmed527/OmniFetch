@@ -24,9 +24,12 @@ public partial class AddDownloadDialog : ContentPage
         };
     }
 
+    private bool _isDismissed;
+
     public async Task<AddDownloadParams?> ShowModalAsync(INavigation nav)
     {
         _parentNav = nav;
+        _isDismissed = false;
         _tcs = new TaskCompletionSource<AddDownloadParams?>();
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
@@ -37,6 +40,18 @@ public partial class AddDownloadDialog : ContentPage
 
     private async Task DismissAsync(bool confirmed)
     {
+        if (_isDismissed) return;
+        _isDismissed = true;
+
+        if (confirmed && !string.IsNullOrWhiteSpace(_viewModel.Url))
+        {
+            _tcs?.TrySetResult(new AddDownloadParams(_viewModel.Url, _viewModel.DestinationPath, _viewModel.FileName, _viewModel.Cookies));
+        }
+        else
+        {
+            _tcs?.TrySetResult(null);
+        }
+
         try
         {
             await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -69,17 +84,6 @@ public partial class AddDownloadDialog : ContentPage
         catch (Exception ex)
         {
             Console.WriteLine($"[AddDownloadDialog] DismissAsync error: {ex.Message}");
-        }
-        finally
-        {
-            if (confirmed && !string.IsNullOrWhiteSpace(_viewModel.Url))
-            {
-                _tcs?.TrySetResult(new AddDownloadParams(_viewModel.Url, _viewModel.DestinationPath, _viewModel.FileName, _viewModel.Cookies));
-            }
-            else
-            {
-                _tcs?.TrySetResult(null);
-            }
         }
     }
 
@@ -115,7 +119,11 @@ public partial class AddDownloadDialog : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        // Safety net: ensure TCS is fulfilled if dismissed via platform hardware gesture/swipe
-        _tcs?.TrySetResult(null);
+        // Safety net: if dismissed via external platform gesture without clicking a button
+        if (!_isDismissed)
+        {
+            _isDismissed = true;
+            _tcs?.TrySetResult(null);
+        }
     }
 }

@@ -102,6 +102,11 @@
                 <Label Text="{Binding SpeedLimitKbps, StringFormat='{0:F0} KB/s'}" FontSize="12" FontAttributes="Bold" VerticalOptions="Center" />
             </HorizontalStackLayout>
 
+            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center" HorizontalOptions="Center">
+                <CheckBox IsChecked="{Binding AutoCloseOnCompletion, Mode=TwoWay}" VerticalOptions="Center" />
+                <Label Text="Close when completed" FontSize="11" VerticalOptions="Center" TextColor="{StaticResource IdmTextSecondary}" />
+            </HorizontalStackLayout>
+
             <Button Grid.Column="2" 
                     Text="{Binding PauseResumeText}" 
                     Clicked="OnPauseResumeClicked"

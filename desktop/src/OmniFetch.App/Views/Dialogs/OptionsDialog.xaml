@@ -113,6 +113,11 @@
                         </HorizontalStackLayout>
 
                         <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                            <CheckBox IsChecked="{Binding AutoCloseProgressDialogOnCompletion, Mode=TwoWay}" VerticalOptions="Center" />
+                            <Label Text="Close download progress dialog when download completes" FontSize="13" TextColor="{StaticResource IdmTextPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
                             <CheckBox IsChecked="{Binding ShowCompleteDialog, Mode=TwoWay}" VerticalOptions="Center" />
                             <Label Text="Show Download Complete dialog when download finishes" FontSize="13" TextColor="{StaticResource IdmTextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>

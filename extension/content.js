@@ -294,13 +294,45 @@
         return;
       }
 
-      const streams = await fetchAvailableStreams();
+      // Step 1: Check streams already cached in background
+      let streams = await fetchAvailableStreams();
 
-      if (streams.length > 1) {
+      // Step 2: If none cached, attempt extraction directly from page scripts (YouTube)
+      if (!streams || streams.length === 0) {
+        const pageStreams = extractYouTubePageStreams();
+        if (pageStreams.length > 0) {
+          console.log(`[OmniFetch Content] Extracted ${pageStreams.length} stream(s) directly from page scripts`);
+          await new Promise((resolve) => {
+            safeSendMessage({ type: "REGISTER_STREAMS", streams: pageStreams }, () => resolve());
+          });
+          streams = await fetchAvailableStreams();
+        }
+      }
+
+      // Step 3: If still none, and video is actively playing, nudge buffer to trigger network stream chunk
+      if (!streams || streams.length === 0) {
+        if (videoElement && !videoElement.paused) {
+          console.log("[OmniFetch Content] Video is playing; nudging buffer to capture stream chunk...");
+          try {
+            const cur = videoElement.currentTime;
+            videoElement.currentTime = cur + 0.005;
+            setTimeout(() => {
+              try { videoElement.currentTime = cur; } catch (ex) {}
+            }, 60);
+          } catch (ex) {}
+
+          // Wait 350ms for the network chunk to register in background
+          await new Promise((resolve) => setTimeout(resolve, 350));
+          streams = await fetchAvailableStreams();
+        }
+      }
+
+      // Step 4: Render quality dropdown or initiate download
+      if (streams && streams.length > 1) {
         renderQualityMenu(streams);
         dropdown.style.display = "block";
         console.log(`[OmniFetch Content] Opened quality dropdown with ${streams.length} options`);
-      } else if (streams.length === 1) {
+      } else if (streams && streams.length === 1) {
         const single = streams[0];
         const sUrl = typeof single === "string" ? single : single.url;
         const sQuality = typeof single === "object" ? single.quality : null;
@@ -327,6 +359,57 @@
     if (parent) {
       parent.appendChild(container);
     }
+  }
+
+  function extractYouTubePageStreams() {
+    const urls = [];
+    try {
+      if (typeof window !== "undefined" && window.location && !window.location.hostname.includes("youtube.com")) {
+        return urls;
+      }
+
+      for (const s of Array.from(document.scripts || [])) {
+        const text = s.textContent;
+        if (!text || !text.includes("streamingData")) continue;
+
+        let jsonStr = null;
+        const marker = "ytInitialPlayerResponse = ";
+        const idx = text.indexOf(marker);
+        if (idx !== -1) {
+          const start = idx + marker.length;
+          let end = text.indexOf("};", start);
+          if (end === -1) end = text.indexOf("}\n", start);
+          if (end !== -1) {
+            jsonStr = text.substring(start, end + 1);
+          }
+        }
+
+        if (jsonStr) {
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data && data.streamingData) {
+              const formats = [
+                ...(data.streamingData.formats || []),
+                ...(data.streamingData.adaptiveFormats || [])
+              ];
+              formats.forEach((f) => {
+                if (f && f.url) {
+                  let streamUrl = f.url;
+                  try {
+                    const u = new URL(streamUrl);
+                    u.searchParams.delete("range");
+                    u.searchParams.delete("rn");
+                    streamUrl = u.toString();
+                  } catch (e) {}
+                  urls.push(streamUrl);
+                }
+              });
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+    return urls;
   }
 
   function extractVideoFileName(streamUrl, qualityLabel) {
@@ -400,6 +483,20 @@
 
   // Initial scan
   attachVideoGrabbers();
+
+  // Listen for YouTube Single Page App (SPA) in-page navigations
+  if (typeof window !== "undefined") {
+    window.addEventListener("yt-navigate-finish", () => {
+      console.log("[OmniFetch Content] YouTube in-page navigation detected (yt-navigate-finish)");
+      setTimeout(() => {
+        attachVideoGrabbers();
+        const found = extractYouTubePageStreams();
+        if (found.length > 0) {
+          safeSendMessage({ type: "REGISTER_STREAMS", streams: found });
+        }
+      }, 500);
+    });
+  }
 
   function showFloatingNotification(text) {
     try {

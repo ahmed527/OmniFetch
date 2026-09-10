@@ -50,15 +50,15 @@
                 <controls:ToolbarButton Text="Stop" IconSource="idm_stop.png" Command="{Binding StopCommand}" />
                 <controls:ToolbarButton Text="Stop All" IconSource="idm_stop_all.png" Command="{Binding StopAllCommand}" />
                 <controls:ToolbarButton Text="Delete" IconSource="idm_delete.png" Command="{Binding DeleteCommand}" />
-                <controls:ToolbarButton Text="Delete Comp." IconSource="idm_delete_completed.png" Command="{Binding DeleteCompletedCommand}" />
+                <controls:ToolbarButton Text="Delete Comp." ButtonWidth="88" IconSource="idm_delete_completed.png" Command="{Binding DeleteCompletedCommand}" />
 
                 <!-- Toolbar Separator -->
                 <BoxView Color="#94A3B8" WidthRequest="1" HeightRequest="38" Margin="4,0" VerticalOptions="Center" />
 
                 <controls:ToolbarButton Text="Options" IconSource="idm_options.png" Command="{Binding OptionsCommand}" Clicked="OnOptionsButtonClicked" />
                 <controls:ToolbarButton Text="Scheduler" IconSource="idm_scheduler.png" Command="{Binding OptionsCommand}" Clicked="OnOptionsButtonClicked" />
-                <controls:ToolbarButton Text="Start Queue" IconSource="idm_start_queue.png" Command="{Binding StartQueueCommand}" />
-                <controls:ToolbarButton Text="Stop Queue" IconSource="idm_stop_queue.png" Command="{Binding StopQueueCommand}" />
+                <controls:ToolbarButton Text="Start Queue" ButtonWidth="80" IconSource="idm_start_queue.png" Command="{Binding StartQueueCommand}" />
+                <controls:ToolbarButton Text="Stop Queue" ButtonWidth="80" IconSource="idm_stop_queue.png" Command="{Binding StopQueueCommand}" />
                 <controls:ToolbarButton Text="Grabber" IconSource="idm_grabber.png" Command="{Binding GrabberCommand}" />
             </HorizontalStackLayout>
         </Border>

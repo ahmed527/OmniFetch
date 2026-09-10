@@ -19,22 +19,22 @@ public partial class DownloadProgressDialog : ContentPage
             {
                 try
                 {
-                    if (Navigation.ModalStack.Count > 0)
+                    if (Navigation != null && Navigation.ModalStack.Contains(this))
                     {
-                        await Navigation.PopModalAsync(true);
+                        await Navigation.PopModalAsync(false);
                     }
-                }
-                catch
-                {
-                    try
+                    else
                     {
                         var nav = Application.Current?.Windows.Count > 0 ? Application.Current.Windows[0].Page?.Navigation : null;
-                        if (nav != null && nav.ModalStack.Count > 0)
+                        if (nav != null && nav.ModalStack.Contains(this))
                         {
-                            await nav.PopModalAsync(true);
+                            await nav.PopModalAsync(false);
                         }
                     }
-                    catch { /* Ignore */ }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DownloadProgressDialog] PopModalAsync error: {ex.Message}");
                 }
             });
         };

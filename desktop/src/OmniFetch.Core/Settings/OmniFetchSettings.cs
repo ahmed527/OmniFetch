@@ -57,6 +57,12 @@ public sealed class OmniFetchSettings
     public bool ShowCompleteDialog { get; set; } = true;
 
     /// <summary>
+    /// Whether to automatically close the download progress dialog when the download completes.
+    /// Default: true.
+    /// </summary>
+    public bool AutoCloseProgressDialogOnCompletion { get; set; } = true;
+
+    /// <summary>
     /// Maximum parallel connections per download task (1 to 32, default 8).
     /// </summary>
     public int MaxConnections { get; set; } = 8;

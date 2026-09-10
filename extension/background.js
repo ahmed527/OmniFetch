@@ -20,6 +20,53 @@ const tabModifierState = new Map();
 // Cache detected video stream URLs per tab
 const tabStreams = new Map();
 
+// Helper to initialize streams from session storage (persists across service worker restarts)
+async function initSessionStreams() {
+  try {
+    if (chrome.storage?.session) {
+      const stored = await chrome.storage.session.get("tabStreams");
+      if (stored && stored.tabStreams) {
+        for (const [tabIdStr, streamsObj] of Object.entries(stored.tabStreams)) {
+          const tid = Number(tabIdStr);
+          if (!isNaN(tid) && typeof streamsObj === "object") {
+            tabStreams.set(tid, new Map(Object.entries(streamsObj)));
+          }
+        }
+      }
+    }
+  } catch (e) {}
+}
+initSessionStreams();
+
+async function persistSessionStreams() {
+  try {
+    if (chrome.storage?.session) {
+      const serialized = {};
+      for (const [tabId, streamMap] of tabStreams.entries()) {
+        if (streamMap instanceof Map) {
+          serialized[tabId] = Object.fromEntries(streamMap.entries());
+        }
+      }
+      await chrome.storage.session.set({ tabStreams: serialized });
+    }
+  } catch (e) {}
+}
+
+function recordStreamForTab(tabId, streamUrl) {
+  if (!tabId || tabId < 0 || !streamUrl) return;
+  if (!tabStreams.has(tabId)) {
+    tabStreams.set(tabId, new Map());
+  }
+  const streamMeta = parseStreamMetadata(streamUrl);
+  const streamKey = streamMeta.itag || (streamMeta.quality + "_" + streamMeta.format);
+  const currentTabStreams = tabStreams.get(tabId);
+  if (currentTabStreams instanceof Map) {
+    currentTabStreams.set(streamKey, streamMeta);
+  }
+  persistSessionStreams();
+  console.log(`[OmniFetch BG] Tab ${tabId} detected stream: [${streamMeta.label}] format=${streamMeta.format}, size=${streamMeta.sizeFormatted || "unknown"}, itag=${streamMeta.itag}`);
+}
+
 // 2. Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !message.type) return false;
@@ -32,6 +79,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         timestamp: Date.now()
       });
     }
+    return false;
+  }
+
+  if (message.type === "REGISTER_STREAMS") {
+    const tabId = sender.tab ? sender.tab.id : message.tabId;
+    if (tabId && Array.isArray(message.streams)) {
+      message.streams.forEach(s => {
+        const url = typeof s === "string" ? s : s.url;
+        recordStreamForTab(tabId, url);
+      });
+      console.log(`[OmniFetch BG] Tab ${tabId} registered ${message.streams.length} stream(s) from content script`);
+    }
+    sendResponse({ success: true });
     return false;
   }
 
@@ -107,6 +167,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabModifierState.delete(tabId);
   tabStreams.delete(tabId);
+  persistSessionStreams();
+});
+
+// Reset streams when tab navigates to a new URL
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.url) {
+    console.log(`[OmniFetch BG] Tab ${tabId} navigated to new URL; clearing previous stream cache`);
+    tabStreams.delete(tabId);
+    persistSessionStreams();
+  }
 });
 
 // 3. Intercept browser downloads before disk writing begins
@@ -404,7 +474,7 @@ function parseStreamMetadata(rawUrl) {
 // 5. Sniff streaming media playlists (.m3u8, .mpd) and direct video streams (e.g. YouTube googlevideo.com)
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
-    if (!details.url || details.tabId < 0) return;
+    if (!details.url) return;
 
     const lowerUrl = details.url.toLowerCase();
     let isStream = false;
@@ -427,17 +497,21 @@ chrome.webRequest.onBeforeRequest.addListener(
     }
 
     if (isStream) {
-      if (!tabStreams.has(details.tabId)) {
-        tabStreams.set(details.tabId, new Map());
+      if (details.tabId >= 0) {
+        recordStreamForTab(details.tabId, streamUrl);
+      } else {
+        // Associate background media pipeline requests with the active focused tab
+        try {
+          if (chrome.tabs && chrome.tabs.query) {
+            chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+              if (tabs && tabs.length > 0 && tabs[0].id) {
+                recordStreamForTab(tabs[0].id, streamUrl);
+              }
+            });
+          }
+        } catch (e) {}
       }
-      const streamMeta = parseStreamMetadata(streamUrl);
-      const streamKey = streamMeta.itag || (streamMeta.quality + "_" + streamMeta.format);
-      const currentTabStreams = tabStreams.get(details.tabId);
-      if (currentTabStreams instanceof Map) {
-        currentTabStreams.set(streamKey, streamMeta);
-      }
-      console.log(`[OmniFetch BG] Tab ${details.tabId} detected stream: [${streamMeta.label}] format=${streamMeta.format}, size=${streamMeta.sizeFormatted || "unknown"}, itag=${streamMeta.itag}`);
     }
   },
-  { urls: ["<all_urls>"], types: ["xmlhttprequest", "other", "media"] }
+  { urls: ["<all_urls>"] }
 );

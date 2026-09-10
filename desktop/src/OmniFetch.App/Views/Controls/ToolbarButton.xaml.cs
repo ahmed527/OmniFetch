@@ -51,12 +51,32 @@ public partial class ToolbarButton : ContentView
             typeof(ToolbarButton), 
             null);
 
+    public static readonly BindableProperty ButtonWidthProperty =
+        BindableProperty.Create(
+            nameof(ButtonWidth),
+            typeof(double),
+            typeof(ToolbarButton),
+            76.0,
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                if (bindable is ToolbarButton btn && btn.RootGrid != null)
+                {
+                    btn.RootGrid.WidthRequest = (double)newValue;
+                }
+            });
+
     public event EventHandler? Clicked;
 
     public string Text
     {
         get => (string)GetValue(TextProperty);
         set => SetValue(TextProperty, value);
+    }
+
+    public double ButtonWidth
+    {
+        get => (double)GetValue(ButtonWidthProperty);
+        set => SetValue(ButtonWidthProperty, value);
     }
 
     public ImageSource? IconSource

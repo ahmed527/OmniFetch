@@ -37,6 +37,9 @@ public partial class OptionsViewModel : ObservableObject
     private bool _showCompleteDialog = true;
 
     [ObservableProperty]
+    private bool _autoCloseProgressDialogOnCompletion = true;
+
+    [ObservableProperty]
     private int _maxConnections = 8;
 
     [ObservableProperty]
@@ -67,6 +70,7 @@ public partial class OptionsViewModel : ObservableObject
         DefaultDownloadDirectory = settings.DefaultDownloadDirectory;
         ShowStartDialog = settings.ShowStartDialog;
         ShowCompleteDialog = settings.ShowCompleteDialog;
+        AutoCloseProgressDialogOnCompletion = settings.AutoCloseProgressDialogOnCompletion;
         MaxConnections = settings.MaxConnections;
 
         VideoDirectory = settings.CategoryDirectories.TryGetValue("Video", out var vd) ? vd : DefaultDownloadDirectory;
@@ -157,6 +161,7 @@ public partial class OptionsViewModel : ObservableObject
             settings.DefaultDownloadDirectory = DefaultDownloadDirectory;
             settings.ShowStartDialog = ShowStartDialog;
             settings.ShowCompleteDialog = ShowCompleteDialog;
+            settings.AutoCloseProgressDialogOnCompletion = AutoCloseProgressDialogOnCompletion;
             settings.MaxConnections = Math.Clamp(MaxConnections, 1, 32);
 
             settings.CategoryDirectories["General"] = DefaultDownloadDirectory;

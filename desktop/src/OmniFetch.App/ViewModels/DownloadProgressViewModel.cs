@@ -29,6 +29,9 @@ public partial class DownloadProgressViewModel : ObservableObject
     [ObservableProperty]
     private double _speedLimitKbps = 1024;
 
+    [ObservableProperty]
+    private bool _autoCloseOnCompletion = true;
+
     public string PauseResumeText => Download.IsDownloading ? "Pause" : "Resume";
 
     public string SaveToPath => Download.DestinationFilePath;
@@ -43,6 +46,7 @@ public partial class DownloadProgressViewModel : ObservableObject
     {
         Download = download ?? throw new ArgumentNullException(nameof(download));
         _mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
+        AutoCloseOnCompletion = _mainViewModel.CurrentSettings.AutoCloseProgressDialogOnCompletion;
         UpdateTitle();
         Download.PropertyChanged += (s, e) =>
         {
@@ -54,6 +58,18 @@ public partial class DownloadProgressViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(PauseResumeText));
                 OnPropertyChanged(nameof(CanChangeLocation));
+
+                if (Download.Status == DownloadStatus.Completed && AutoCloseOnCompletion)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(500);
+                        if (RequestCloseHandler != null)
+                        {
+                            await RequestCloseHandler.Invoke();
+                        }
+                    });
+                }
             }
             if (e.PropertyName is nameof(Download.DestinationFilePath))
             {
