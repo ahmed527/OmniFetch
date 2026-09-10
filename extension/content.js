@@ -7,30 +7,54 @@
     return typeof chrome !== "undefined" && Boolean(chrome.runtime && chrome.runtime.id);
   }
 
+  // Global safeguard: intercept and suppress any extension context invalidation unhandled rejections
+  // so Chrome will never log them on chrome://extensions
+  if (typeof window !== "undefined") {
+    window.addEventListener("unhandledrejection", (event) => {
+      const reason = event.reason ? (event.reason.message || String(event.reason)) : "";
+      if (reason.includes("Extension context invalidated") || reason.includes("message port closed")) {
+        event.preventDefault();
+        cleanupOnInvalidatedContext();
+      }
+    });
+  }
+
   // Safe wrapper for chrome.runtime.sendMessage that prevents Uncaught (in promise) Error: Extension context invalidated
   function safeSendMessage(message, callback) {
     if (!isExtensionValid()) {
       cleanupOnInvalidatedContext();
+      if (typeof callback === "function") callback(null);
       return;
     }
 
     try {
-      const promise = chrome.runtime.sendMessage(message, (res) => {
+      let callbackFired = false;
+      const resPromise = chrome.runtime.sendMessage(message, (res) => {
+        callbackFired = true;
         if (chrome.runtime?.lastError) {
-          // Handled quietly to prevent unhandled exceptions
+          const errText = chrome.runtime.lastError.message || "";
+          if (errText.includes("Extension context invalidated")) {
+            cleanupOnInvalidatedContext();
+          }
         }
         if (typeof callback === "function") {
           callback(res);
         }
       });
 
-      if (promise && typeof promise.catch === "function") {
-        promise.catch((err) => {
+      if (resPromise && typeof resPromise.catch === "function") {
+        resPromise.catch((err) => {
           cleanupOnInvalidatedContext();
+          if (!callbackFired && typeof callback === "function") {
+            callback(null);
+          }
         });
       }
     } catch (err) {
       cleanupOnInvalidatedContext();
+      if (typeof callback === "function") {
+        callback(null);
+      }
     }
   }
 
@@ -123,7 +147,6 @@
   // 2. IDM-Style Floating Video Grabber
   const detectedStreams = new Set();
 
-
   function attachVideoGrabbers() {
     if (!isExtensionValid()) {
       cleanupOnInvalidatedContext();
@@ -181,7 +204,11 @@
         try {
           if (!isExtensionValid()) return;
           const tabRes = await new Promise((resolve) => {
-            safeSendMessage({ type: "GET_TAB_STREAMS" }, resolve);
+            const timeoutId = setTimeout(() => resolve(null), 2000);
+            safeSendMessage({ type: "GET_TAB_STREAMS" }, (res) => {
+              clearTimeout(timeoutId);
+              resolve(res);
+            });
           });
           if (tabRes && tabRes.streams && tabRes.streams.length > 0) {
             streamUrl = tabRes.streams[tabRes.streams.length - 1];

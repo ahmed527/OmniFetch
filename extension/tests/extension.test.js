@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -364,4 +365,136 @@ describe("OmniFetch Chrome Extension (Manifest V3) Test Suite", () => {
       assert.equal(payload.suggestedFileName, "test.zip");
     });
   });
+
+  describe("Syntax and Bracket/Brace Integrity Validation", () => {
+    test("content.js, background.js, and popup.js compile into valid V8 ASTs with 0 syntax errors", () => {
+      const files = ["content.js", "background.js", "popup/popup.js"];
+      for (const relPath of files) {
+        const fullPath = path.join(extensionRoot, relPath);
+        const code = fs.readFileSync(fullPath, "utf8");
+        assert.doesNotThrow(() => {
+          new vm.Script(code, { filename: relPath });
+        }, `${relPath} must compile cleanly without syntax errors`);
+      }
+    });
+
+    test("All brackets, braces, and parentheses are 100% balanced across all extension JavaScript files", () => {
+      const files = ["content.js", "background.js", "popup/popup.js"];
+      for (const relPath of files) {
+        const fullPath = path.join(extensionRoot, relPath);
+        const code = fs.readFileSync(fullPath, "utf8");
+
+        const stack = [];
+        let inSingle = false, inDouble = false, inTemplate = false;
+        let inLineComment = false, inBlockComment = false;
+        let inRegex = false, inRegexClass = false;
+        let escaped = false;
+        let lastToken = "";
+
+        for (let i = 0; i < code.length; i++) {
+          const ch = code[i];
+          const next = code[i + 1];
+
+          if (ch === "\n") {
+            inLineComment = false;
+            if (inRegex) inRegex = false;
+            continue;
+          }
+
+          if (inLineComment) continue;
+          if (inBlockComment) {
+            if (ch === "*" && next === "/") { inBlockComment = false; i++; }
+            continue;
+          }
+
+          if (inSingle) {
+            if (!escaped && ch === "'") inSingle = false;
+            escaped = !escaped && ch === "\\";
+            continue;
+          }
+          if (inDouble) {
+            if (!escaped && ch === "\"") inDouble = false;
+            escaped = !escaped && ch === "\\";
+            continue;
+          }
+          if (inTemplate) {
+            if (!escaped && ch === "`") inTemplate = false;
+            escaped = !escaped && ch === "\\";
+            continue;
+          }
+
+          if (inRegex) {
+            if (!escaped) {
+              if (ch === "[") inRegexClass = true;
+              else if (ch === "]" && inRegexClass) inRegexClass = false;
+              else if (ch === "/" && !inRegexClass) inRegex = false;
+            }
+            escaped = !escaped && ch === "\\";
+            continue;
+          }
+
+          if (ch === "/" && next === "/") { inLineComment = true; i++; continue; }
+          if (ch === "/" && next === "*") { inBlockComment = true; i++; continue; }
+
+          if (ch === "/") {
+            const regexPreceding = ["(", "[", "{", ";", ",", "=", ":", "!", "&", "|", "?", "~", "^", "+", "-", "*", "%", "<", ">", "return", "case", "typeof"];
+            if (regexPreceding.includes(lastToken) || lastToken === "") {
+              inRegex = true;
+              inRegexClass = false;
+              escaped = false;
+              continue;
+            }
+          }
+
+          if (ch === "'") { inSingle = true; escaped = false; continue; }
+          if (ch === "\"") { inDouble = true; escaped = false; continue; }
+          if (ch === "`") { inTemplate = true; escaped = false; continue; }
+
+          if (!/\s/.test(ch)) {
+            if (/[a-zA-Z0-9_$]/.test(ch)) {
+              if (/[a-zA-Z0-9_$]/.test(lastToken)) {
+                lastToken += ch;
+              } else {
+                lastToken = ch;
+              }
+            } else {
+              lastToken = ch;
+            }
+          }
+
+          if (ch === "{" || ch === "(" || ch === "[") {
+            stack.push(ch);
+          } else if (ch === "}" || ch === ")" || ch === "]") {
+            const expected = ch === "}" ? "{" : ch === ")" ? "(" : "[";
+            const top = stack.pop();
+            assert.equal(top, expected, `Mismatched bracket ${ch} in ${relPath}`);
+          }
+        }
+
+        assert.equal(stack.length, 0, `Unclosed brackets in ${relPath}: ${stack.join(", ")}`);
+      }
+    });
+
+    test("content.css and popup.css have perfectly matched braces", () => {
+      const cssFiles = ["content.css", "popup/popup.css"];
+      for (const relPath of cssFiles) {
+        const fullPath = path.join(extensionRoot, relPath);
+        const css = fs.readFileSync(fullPath, "utf8");
+        let openCount = 0;
+        let closeCount = 0;
+        for (const ch of css) {
+          if (ch === "{") openCount++;
+          if (ch === "}") closeCount++;
+        }
+        assert.equal(openCount, closeCount, `${relPath} braces count mismatch: ${openCount} open vs ${closeCount} closed`);
+      }
+    });
+
+    test("content.js implements window unhandledrejection safeguard", () => {
+      const contentJs = fs.readFileSync(path.join(extensionRoot, "content.js"), "utf8");
+      assert.ok(contentJs.includes("unhandledrejection"), "content.js must register unhandledrejection listener");
+      assert.ok(contentJs.includes("event.preventDefault()"), "unhandledrejection listener must call event.preventDefault()");
+    });
+  });
 });
+
