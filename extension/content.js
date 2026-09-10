@@ -7,6 +7,8 @@
     return typeof chrome !== "undefined" && Boolean(chrome.runtime && chrome.runtime.id);
   }
 
+  console.log("[OmniFetch Content] Active on:", window.location.href);
+
   // Global safeguard: intercept and suppress any extension context invalidation unhandled rejections
   // so Chrome will never log them on chrome://extensions
   if (typeof window !== "undefined") {
@@ -154,6 +156,10 @@
     }
 
     const videos = document.querySelectorAll("video");
+    if (videos.length > 0) {
+      console.log(`[OmniFetch Content] Found ${videos.length} video element(s) on page`);
+    }
+
     videos.forEach((video) => {
       if (video.dataset.omnifetchAttached) return;
       video.dataset.omnifetchAttached = "true";
@@ -163,6 +169,8 @@
   }
 
   function createFloatingGrabber(videoElement) {
+    console.log("[OmniFetch Content] Attaching IDM floating video grabber to video element");
+
     const container = document.createElement("div");
     container.className = "omnifetch-video-grabber";
     container.innerHTML = `
@@ -171,8 +179,13 @@
           <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/>
         </svg>
         <span class="omnifetch-grabber-text">Download this video</span>
+        <span class="omnifetch-grabber-arrow">▾</span>
       </div>
+      <div class="omnifetch-quality-dropdown" style="display: none;"></div>
     `;
+
+    const btn = container.querySelector(".omnifetch-grabber-btn");
+    const dropdown = container.querySelector(".omnifetch-quality-dropdown");
 
     // Position relative to video or container
     const parent = videoElement.parentElement;
@@ -180,7 +193,91 @@
       parent.style.position = "relative";
     }
 
-    container.addEventListener("click", async (e) => {
+    async function fetchAvailableStreams() {
+      if (!isExtensionValid()) return [];
+      console.log("[OmniFetch Content] Fetching available streams for tab from background...");
+      const tabRes = await new Promise((resolve) => {
+        const timeoutId = setTimeout(() => resolve(null), 2000);
+        safeSendMessage({ type: "GET_TAB_STREAMS" }, (res) => {
+          clearTimeout(timeoutId);
+          resolve(res);
+        });
+      });
+
+      const list = (tabRes && tabRes.streams && Array.isArray(tabRes.streams)) ? tabRes.streams : [];
+      console.log(`[OmniFetch Content] Background returned ${list.length} stream option(s):`, list);
+      return list;
+    }
+
+    function renderQualityMenu(streams) {
+      dropdown.innerHTML = "";
+      const header = document.createElement("div");
+      header.className = "omnifetch-dropdown-header";
+      header.textContent = "Select Video Quality";
+      dropdown.appendChild(header);
+
+      streams.forEach((s) => {
+        const streamUrl = typeof s === "string" ? s : s.url;
+        const quality = typeof s === "object" ? s.quality : "Video";
+        const label = typeof s === "object" ? s.label : "Stream";
+        const size = typeof s === "object" ? s.sizeFormatted : "";
+
+        const item = document.createElement("div");
+        item.className = "omnifetch-quality-item";
+
+        let badgeClass = "";
+        if (quality === "1080p") badgeClass = "hd1080";
+        else if (quality === "720p") badgeClass = "hd720";
+
+        const sizeHtml = size ? `<span class="omnifetch-quality-size">${size}</span>` : "";
+        item.innerHTML = `
+          <span class="omnifetch-quality-badge ${badgeClass}">${quality}</span>
+          <span class="omnifetch-quality-desc">${label}</span>
+          ` + sizeHtml;
+
+        item.addEventListener("click", (evt) => {
+          evt.stopPropagation();
+          evt.preventDefault();
+          dropdown.style.display = "none";
+          console.log(`[OmniFetch Content] User selected video quality: [${quality}] URL=${streamUrl}`);
+          startStreamDownload(streamUrl, quality);
+        });
+
+        dropdown.appendChild(item);
+      });
+    }
+
+    function startStreamDownload(streamUrl, qualityLabel) {
+      if (!streamUrl || streamUrl.startsWith("blob:")) {
+        console.warn("[OmniFetch Content] Cannot download blob URL directly:", streamUrl);
+        showFloatingNotification("OmniFetch: Please press Play on the video to capture stream");
+        return;
+      }
+
+      const suggestedName = extractVideoFileName(streamUrl, qualityLabel);
+      console.log(`[OmniFetch Content] Sending CAPTURE_URL: fileName="${suggestedName}", URL=${streamUrl}`);
+      showFloatingNotification(`OmniFetch: Sending ${qualityLabel || "video"} stream to OmniFetch...`);
+
+      safeSendMessage({
+        type: "CAPTURE_URL",
+        url: streamUrl,
+        referrer: window.location.href,
+        suggestedFileName: suggestedName
+      }, (res) => {
+        console.log("[OmniFetch Content] CAPTURE_URL response:", res);
+        if (chrome.runtime?.lastError) {
+          showFloatingNotification("OmniFetch Error: " + chrome.runtime.lastError.message);
+        } else if (!res || !res.success) {
+          showFloatingNotification("OmniFetch Error: " + (res?.error || "Could not connect to desktop app"));
+        } else if (res.data && res.data.status === "error") {
+          showFloatingNotification("OmniFetch: " + (res.data.message || "Download declined"));
+        } else {
+          showFloatingNotification("OmniFetch: Download queued in OmniFetch! Check desktop app.");
+        }
+      });
+    }
+
+    btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       e.preventDefault();
 
@@ -190,54 +287,40 @@
         return;
       }
 
-      let streamUrl = videoElement.currentSrc || videoElement.src;
-      // If currentSrc is a blob URL or empty, search detected streams
-      if (!streamUrl || streamUrl.startsWith("blob:")) {
-        streamUrl = null;
-        if (detectedStreams.size > 0) {
-          streamUrl = Array.from(detectedStreams).pop();
+      console.log("[OmniFetch Content] Grabber button clicked");
+
+      if (dropdown.style.display === "block") {
+        dropdown.style.display = "none";
+        return;
+      }
+
+      const streams = await fetchAvailableStreams();
+
+      if (streams.length > 1) {
+        renderQualityMenu(streams);
+        dropdown.style.display = "block";
+        console.log(`[OmniFetch Content] Opened quality dropdown with ${streams.length} options`);
+      } else if (streams.length === 1) {
+        const single = streams[0];
+        const sUrl = typeof single === "string" ? single : single.url;
+        const sQuality = typeof single === "object" ? single.quality : null;
+        console.log("[OmniFetch Content] Single stream option available; starting download directly");
+        startStreamDownload(sUrl, sQuality);
+      } else {
+        let directUrl = videoElement.currentSrc || videoElement.src;
+        if (directUrl && !directUrl.startsWith("blob:")) {
+          console.log("[OmniFetch Content] Starting direct download from video element src:", directUrl);
+          startStreamDownload(directUrl, null);
+        } else {
+          console.warn("[OmniFetch Content] No non-blob stream captured yet");
+          showFloatingNotification("OmniFetch: Please press Play on the video to capture stream");
         }
       }
+    });
 
-      // If still no stream found, query background script for any streams recorded for this tab
-      if (!streamUrl) {
-        try {
-          if (!isExtensionValid()) return;
-          const tabRes = await new Promise((resolve) => {
-            const timeoutId = setTimeout(() => resolve(null), 2000);
-            safeSendMessage({ type: "GET_TAB_STREAMS" }, (res) => {
-              clearTimeout(timeoutId);
-              resolve(res);
-            });
-          });
-          if (tabRes && tabRes.streams && tabRes.streams.length > 0) {
-            streamUrl = tabRes.streams[tabRes.streams.length - 1];
-            detectedStreams.add(streamUrl);
-          }
-        } catch (err) {}
-      }
-
-      if (streamUrl && !streamUrl.startsWith("blob:")) {
-        showFloatingNotification("OmniFetch: Sending stream to OmniFetch...");
-        const suggestedName = extractVideoFileName(streamUrl);
-        safeSendMessage({
-          type: "CAPTURE_URL",
-          url: streamUrl,
-          referrer: window.location.href,
-          suggestedFileName: suggestedName
-        }, (res) => {
-          if (chrome.runtime?.lastError) {
-            showFloatingNotification("OmniFetch Error: " + chrome.runtime.lastError.message);
-          } else if (!res || !res.success) {
-            showFloatingNotification("OmniFetch Error: " + (res?.error || "Could not connect to desktop app"));
-          } else if (res.data && res.data.status === "error") {
-            showFloatingNotification("OmniFetch: " + (res.data.message || "Download declined"));
-          } else {
-            showFloatingNotification("OmniFetch: Download queued in OmniFetch! Check desktop app.");
-          }
-        });
-      } else {
-        showFloatingNotification("OmniFetch: Please press Play on the video to capture stream");
+    document.addEventListener("click", (evt) => {
+      if (!container.contains(evt.target)) {
+        dropdown.style.display = "none";
       }
     });
 
@@ -246,7 +329,7 @@
     }
   }
 
-  function extractVideoFileName(streamUrl) {
+  function extractVideoFileName(streamUrl, qualityLabel) {
     let title = "";
     try {
       // 1. Check YouTube watch metadata header
@@ -278,13 +361,18 @@
       const lower = streamUrl.toLowerCase();
       if (lower.includes("mime=video%2fwebm") || lower.includes("mime=video/webm")) {
         ext = ".webm";
-      } else if (lower.includes("mime=audio%2fmp4") || lower.includes("mime=audio/mp4")) {
+      } else if (lower.includes("mime=audio%2fmp4") || lower.includes("mime=audio/mp4") || (qualityLabel && qualityLabel.toLowerCase().includes("audio"))) {
         ext = ".m4a";
       } else if (lower.includes("mime=audio%2fwebm") || lower.includes("mime=audio/webm")) {
         ext = ".weba";
       } else if (lower.includes(".m3u8")) {
         ext = ".mp4";
       }
+    }
+
+    if (qualityLabel && qualityLabel !== "Original" && qualityLabel !== "Video") {
+      const cleanQuality = qualityLabel.replace(/[^a-zA-Z0-9]/g, "");
+      return `${title} [${cleanQuality}]${ext}`;
     }
 
     return `${title}${ext}`;

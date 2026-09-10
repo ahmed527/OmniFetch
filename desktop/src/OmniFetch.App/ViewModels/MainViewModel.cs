@@ -347,6 +347,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 return item;
             }
 
+            try
+            {
+                File.AppendAllText(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library/Logs/OmniFetch/omnifetch.log"),
+                    $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff UTC}] [MAINVM] StartNewDownloadUrlAsync: URL={url}, Dest={destPath}\n");
+            }
+            catch { }
+
             var regularJob = await _engine.CreateJobAsync(url, destPath, options).ConfigureAwait(false);
             var regularItem = new DownloadItemViewModel(regularJob.Id, regularJob.Url, regularJob.DestinationFilePath, regularJob.TotalBytes);
 
@@ -374,6 +382,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
+            try
+            {
+                File.AppendAllText(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library/Logs/OmniFetch/omnifetch.log"),
+                    $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff UTC}] [MAINVM] StartNewDownloadUrlAsync EXCEPTION: {ex}\n");
+            }
+            catch { }
+
             if (ShowAlertHandler != null)
             {
                 await ShowAlertHandler.Invoke("Download Error", $"Failed to start download: {ex.Message}");

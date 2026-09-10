@@ -77,69 +77,42 @@ public partial class MainPage : ContentPage
 
         var addVm = new AddDownloadViewModel(_settingsService);
         var dialog = new AddDownloadDialog(addVm);
-        await nav.PushModalAsync(dialog, false);
-
-        // Wait until dismissed
-        while (nav.ModalStack.Contains(dialog))
-        {
-            await Task.Delay(100);
-        }
-
-        if (addVm.IsConfirmed && !string.IsNullOrWhiteSpace(addVm.Url))
-        {
-            return new AddDownloadParams(addVm.Url, addVm.DestinationPath, addVm.FileName, addVm.Cookies);
-        }
-
-        return null;
+        return await dialog.ShowModalAsync(nav);
     }
 
     private async Task<AddDownloadParams?> PromptIpcDownloadAsync(NativeDownloadRequest request)
     {
-        var tcs = new TaskCompletionSource<AddDownloadParams?>();
-        await MainThread.InvokeOnMainThreadAsync(async () =>
+        try
         {
-            try
-            {
-                var nav = Navigation;
-                if (nav == null && Application.Current?.Windows.Count > 0)
-                {
-                    nav = Application.Current.Windows[0].Page?.Navigation;
-                }
+            File.AppendAllText(
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library/Logs/OmniFetch/omnifetch.log"),
+                $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff UTC}] [MAINPAGE] PromptIpcDownloadAsync: URL={request.Url}, File={request.SuggestedFileName}\n");
+        }
+        catch { }
 
-                if (nav == null)
-                {
-                    tcs.TrySetResult(null);
-                    return;
-                }
+        var nav = Navigation;
+        if (nav == null && Application.Current?.Windows.Count > 0)
+        {
+            nav = Application.Current.Windows[0].Page?.Navigation;
+        }
 
-                var addVm = new AddDownloadViewModel(_settingsService);
-                addVm.SetExplicitFileDetails(request.Url, request.SuggestedFileName, request.Cookies, request.FileSize);
+        if (nav == null) return null;
 
-                var dialog = new AddDownloadDialog(addVm);
-                await nav.PushModalAsync(dialog, false);
+        var addVm = new AddDownloadViewModel(_settingsService);
+        addVm.SetExplicitFileDetails(request.Url, request.SuggestedFileName, request.Cookies, request.FileSize);
 
-                while (nav.ModalStack.Contains(dialog))
-                {
-                    await Task.Delay(100);
-                }
+        var dialog = new AddDownloadDialog(addVm);
+        var result = await dialog.ShowModalAsync(nav);
 
-                if (addVm.IsConfirmed && !string.IsNullOrWhiteSpace(addVm.Url))
-                {
-                    tcs.TrySetResult(new AddDownloadParams(addVm.Url, addVm.DestinationPath, addVm.FileName, addVm.Cookies));
-                }
-                else
-                {
-                    tcs.TrySetResult(null);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[MainPage.PromptIpcDownloadAsync] Error: {ex.Message}");
-                tcs.TrySetResult(null);
-            }
-        });
+        try
+        {
+            File.AppendAllText(
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library/Logs/OmniFetch/omnifetch.log"),
+                $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff UTC}] [MAINPAGE] PromptIpcDownloadAsync finished: Confirmed={result != null}\n");
+        }
+        catch { }
 
-        return await tcs.Task;
+        return result;
     }
 
     private async Task OpenProgressDialogAsync(DownloadItemViewModel item)

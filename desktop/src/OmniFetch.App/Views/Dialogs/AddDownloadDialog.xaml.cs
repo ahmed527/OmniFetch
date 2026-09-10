@@ -1,6 +1,8 @@
 using System;
+using System.Threading.Tasks;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
+using OmniFetch.App.Models;
 using OmniFetch.App.ViewModels;
 
 namespace OmniFetch.App.Views.Dialogs;
@@ -8,66 +10,97 @@ namespace OmniFetch.App.Views.Dialogs;
 public partial class AddDownloadDialog : ContentPage
 {
     private readonly AddDownloadViewModel _viewModel;
+    private TaskCompletionSource<AddDownloadParams?>? _tcs;
+    private INavigation? _parentNav;
 
     public AddDownloadDialog(AddDownloadViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+
         _viewModel.RequestCloseHandler = async () =>
+        {
+            await DismissAsync(_viewModel.IsConfirmed);
+        };
+    }
+
+    public async Task<AddDownloadParams?> ShowModalAsync(INavigation nav)
+    {
+        _parentNav = nav;
+        _tcs = new TaskCompletionSource<AddDownloadParams?>();
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            await _parentNav.PushModalAsync(this, false);
+        });
+        return await _tcs.Task;
+    }
+
+    private async Task DismissAsync(bool confirmed)
+    {
+        try
         {
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
                 try
                 {
-                    if (Navigation != null && Navigation.ModalStack.Count > 0)
+                    if (_parentNav != null && _parentNav.ModalStack.Contains(this))
+                    {
+                        await _parentNav.PopModalAsync(false);
+                    }
+                    else if (Navigation != null && Navigation.ModalStack.Contains(this))
                     {
                         await Navigation.PopModalAsync(false);
-                        return;
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[AddDownloadDialog] Local nav PopModalAsync error: {ex.Message}");
-                }
-
-                try
-                {
-                    var nav = Application.Current?.Windows.Count > 0 ? Application.Current.Windows[0].Page?.Navigation : null;
-                    if (nav != null && nav.ModalStack.Count > 0)
+                    else
                     {
-                        await nav.PopModalAsync(false);
+                        var appNav = Application.Current?.Windows.Count > 0 ? Application.Current.Windows[0].Page?.Navigation : null;
+                        if (appNav != null && appNav.ModalStack.Contains(this))
+                        {
+                            await appNav.PopModalAsync(false);
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[AddDownloadDialog] App nav PopModalAsync error: {ex.Message}");
+                    Console.WriteLine($"[AddDownloadDialog] PopModalAsync error: {ex.Message}");
                 }
             });
-        };
-    }
-
-    private void OnStartDownloadClicked(object? sender, EventArgs e)
-    {
-        if (_viewModel.StartDownloadCommand.CanExecute(null))
+        }
+        catch (Exception ex)
         {
-            _viewModel.StartDownloadCommand.Execute(null);
+            Console.WriteLine($"[AddDownloadDialog] DismissAsync error: {ex.Message}");
+        }
+        finally
+        {
+            if (confirmed && !string.IsNullOrWhiteSpace(_viewModel.Url))
+            {
+                _tcs?.TrySetResult(new AddDownloadParams(_viewModel.Url, _viewModel.DestinationPath, _viewModel.FileName, _viewModel.Cookies));
+            }
+            else
+            {
+                _tcs?.TrySetResult(null);
+            }
         }
     }
 
-    private void OnDownloadLaterClicked(object? sender, EventArgs e)
+    private async void OnStartDownloadClicked(object? sender, EventArgs e)
     {
-        if (_viewModel.DownloadLaterCommand.CanExecute(null))
-        {
-            _viewModel.DownloadLaterCommand.Execute(null);
-        }
+        _viewModel.DownloadNow = true;
+        _viewModel.IsConfirmed = true;
+        await DismissAsync(true);
     }
 
-    private void OnCancelClicked(object? sender, EventArgs e)
+    private async void OnDownloadLaterClicked(object? sender, EventArgs e)
     {
-        if (_viewModel.CancelCommand.CanExecute(null))
-        {
-            _viewModel.CancelCommand.Execute(null);
-        }
+        _viewModel.DownloadNow = false;
+        _viewModel.IsConfirmed = true;
+        await DismissAsync(true);
+    }
+
+    private async void OnCancelClicked(object? sender, EventArgs e)
+    {
+        _viewModel.IsConfirmed = false;
+        await DismissAsync(false);
     }
 
     protected override async void OnAppearing()
@@ -77,5 +110,12 @@ public partial class AddDownloadDialog : ContentPage
         {
             await _viewModel.CheckClipboardForUrlAsync();
         }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        // Safety net: ensure TCS is fulfilled if dismissed via platform hardware gesture/swipe
+        _tcs?.TrySetResult(null);
     }
 }

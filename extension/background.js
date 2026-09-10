@@ -37,8 +37,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "GET_TAB_STREAMS") {
     const tabId = sender.tab ? sender.tab.id : null;
-    const streams = tabId && tabStreams.has(tabId) ? Array.from(tabStreams.get(tabId)) : [];
-    sendResponse({ success: true, streams });
+    let streamList = [];
+    if (tabId && tabStreams.has(tabId)) {
+      const tabMap = tabStreams.get(tabId);
+      if (tabMap instanceof Map) {
+        streamList = Array.from(tabMap.values()).sort((a, b) => b.order - a.order);
+      } else if (tabMap instanceof Set) {
+        streamList = Array.from(tabMap).map(url => (typeof url === "string" ? parseStreamMetadata(url) : url));
+      }
+    }
+    console.log(`[OmniFetch BG] GET_TAB_STREAMS for tab ${tabId}: returning ${streamList.length} stream option(s)`, streamList);
+    sendResponse({ success: true, streams: streamList });
     return false;
   }
 
@@ -61,14 +70,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "CAPTURE_URL") {
+    console.log("[OmniFetch BG] Received CAPTURE_URL request:", {
+      url: message.url,
+      suggestedFileName: message.suggestedFileName,
+      referrer: message.referrer
+    });
     if (!message.url || message.url.startsWith("blob:")) {
+      console.warn("[OmniFetch BG] Rejected blob: or empty URL:", message.url);
       sendResponse({ success: false, error: "Browser blob: URLs cannot be downloaded directly outside the browser." });
       return false;
     }
 
     captureExplicitUrl(message.url, message.referrer, message.suggestedFileName)
-      .then(res => sendResponse({ success: true, data: res }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
+      .then(res => {
+        console.log("[OmniFetch BG] captureExplicitUrl response from Native Bridge:", res);
+        sendResponse({ success: true, data: res });
+      })
+      .catch(err => {
+        console.error("[OmniFetch BG] captureExplicitUrl error:", err);
+        sendResponse({ success: false, error: err.message });
+      });
     return true;
   }
 
@@ -252,6 +273,134 @@ function sanitizeInterceptedFileName(downloadItem, targetUrl) {
   return filename;
 }
 
+// Helper to parse stream metadata, resolutions, formats, and sizes
+function parseStreamMetadata(rawUrl) {
+  const lowerUrl = rawUrl.toLowerCase();
+  let quality = "Original";
+  let label = "Video";
+  let format = "MP4";
+  let sizeBytes = null;
+  let sizeFormatted = "";
+  let order = 500;
+  let itag = "";
+
+  try {
+    const u = new URL(rawUrl);
+    itag = u.searchParams.get("itag") || "";
+    const clen = u.searchParams.get("clen");
+    if (clen) {
+      sizeBytes = parseInt(clen, 10);
+      if (!isNaN(sizeBytes) && sizeBytes > 0) {
+        if (sizeBytes >= 1024 * 1024 * 1024) {
+          sizeFormatted = (sizeBytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+        } else {
+          sizeFormatted = (sizeBytes / (1024 * 1024)).toFixed(1) + " MB";
+        }
+      }
+    }
+
+    const mime = (u.searchParams.get("mime") || "").toLowerCase();
+    if (mime.includes("webm")) format = "WebM";
+    else if (mime.includes("mp4")) format = "MP4";
+    else if (mime.includes("audio")) format = "M4A";
+
+    switch (itag) {
+      case "137":
+      case "248":
+      case "399":
+        quality = "1080p";
+        label = "1080p HD";
+        order = 1080;
+        break;
+      case "22":
+        quality = "720p";
+        label = "720p HD";
+        format = "MP4";
+        order = 721;
+        break;
+      case "136":
+      case "247":
+      case "398":
+        quality = "720p";
+        label = "720p HD";
+        order = 720;
+        break;
+      case "135":
+      case "244":
+      case "397":
+        quality = "480p";
+        label = "480p";
+        order = 480;
+        break;
+      case "18":
+        quality = "360p";
+        label = "360p";
+        format = "MP4";
+        order = 361;
+        break;
+      case "134":
+      case "243":
+      case "396":
+        quality = "360p";
+        label = "360p";
+        order = 360;
+        break;
+      case "160":
+      case "278":
+        quality = "144p";
+        label = "144p";
+        order = 144;
+        break;
+      case "140":
+        quality = "Audio";
+        label = "Audio only (M4A)";
+        format = "M4A";
+        order = 50;
+        break;
+      case "251":
+        quality = "Audio";
+        label = "Audio only (Opus)";
+        format = "WebM";
+        order = 49;
+        break;
+      default:
+        if (lowerUrl.includes(".m3u8")) {
+          quality = "HLS";
+          label = "HLS Stream";
+          format = "M3U8";
+          order = 700;
+        } else if (lowerUrl.includes(".mpd")) {
+          quality = "DASH";
+          label = "DASH Stream";
+          format = "MPD";
+          order = 600;
+        } else if (lowerUrl.includes(".webm")) {
+          quality = "WebM";
+          label = "WebM Video";
+          format = "WebM";
+          order = 300;
+        } else {
+          quality = "Video";
+          label = "MP4 Video";
+          format = "MP4";
+          order = 350;
+        }
+        break;
+    }
+  } catch (e) {}
+
+  return {
+    url: rawUrl,
+    itag,
+    quality,
+    label,
+    format,
+    sizeBytes,
+    sizeFormatted,
+    order
+  };
+}
+
 // 5. Sniff streaming media playlists (.m3u8, .mpd) and direct video streams (e.g. YouTube googlevideo.com)
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
@@ -279,9 +428,15 @@ chrome.webRequest.onBeforeRequest.addListener(
 
     if (isStream) {
       if (!tabStreams.has(details.tabId)) {
-        tabStreams.set(details.tabId, new Set());
+        tabStreams.set(details.tabId, new Map());
       }
-      tabStreams.get(details.tabId).add(streamUrl);
+      const streamMeta = parseStreamMetadata(streamUrl);
+      const streamKey = streamMeta.itag || (streamMeta.quality + "_" + streamMeta.format);
+      const currentTabStreams = tabStreams.get(details.tabId);
+      if (currentTabStreams instanceof Map) {
+        currentTabStreams.set(streamKey, streamMeta);
+      }
+      console.log(`[OmniFetch BG] Tab ${details.tabId} detected stream: [${streamMeta.label}] format=${streamMeta.format}, size=${streamMeta.sizeFormatted || "unknown"}, itag=${streamMeta.itag}`);
     }
   },
   { urls: ["<all_urls>"], types: ["xmlhttprequest", "other", "media"] }

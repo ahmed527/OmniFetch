@@ -94,6 +94,15 @@ public partial class HttpProbeService : IHttpProbeService
         {
             request.Headers.TryAddWithoutValidation("Referer", options.Referrer);
         }
+        else if (url.Contains("googlevideo.com", StringComparison.OrdinalIgnoreCase) || url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Headers.TryAddWithoutValidation("Referer", "https://www.youtube.com/");
+        }
+
+        if (url.Contains("googlevideo.com", StringComparison.OrdinalIgnoreCase) || url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Headers.TryAddWithoutValidation("Origin", "https://www.youtube.com");
+        }
 
         if (!string.IsNullOrWhiteSpace(options.Cookies))
         {

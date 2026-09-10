@@ -229,6 +229,15 @@ public class SegmentWorker
         {
             request.Headers.TryAddWithoutValidation("Referer", _options.Referrer);
         }
+        else if (request.RequestUri?.Host.Contains("googlevideo.com", StringComparison.OrdinalIgnoreCase) == true || request.RequestUri?.Host.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            request.Headers.TryAddWithoutValidation("Referer", "https://www.youtube.com/");
+        }
+
+        if (request.RequestUri?.Host.Contains("googlevideo.com", StringComparison.OrdinalIgnoreCase) == true || request.RequestUri?.Host.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            request.Headers.TryAddWithoutValidation("Origin", "https://www.youtube.com");
+        }
 
         if (!string.IsNullOrWhiteSpace(_options.Cookies))
         {

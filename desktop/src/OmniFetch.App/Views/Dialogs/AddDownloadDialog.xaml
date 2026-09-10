@@ -82,9 +82,9 @@
 
         <!-- Bottom Action Buttons -->
         <HorizontalStackLayout Grid.Row="1" Spacing="12" HorizontalOptions="End">
-            <Button Text="Start Download" Command="{Binding StartDownloadCommand}" Clicked="OnStartDownloadClicked" Style="{StaticResource IdmPrimaryButton}" WidthRequest="130" HeightRequest="36" />
-            <Button Text="Download Later" Command="{Binding DownloadLaterCommand}" Clicked="OnDownloadLaterClicked" Style="{StaticResource IdmSecondaryButton}" WidthRequest="130" HeightRequest="36" />
-            <Button Text="Cancel" Command="{Binding CancelCommand}" Clicked="OnCancelClicked" Style="{StaticResource IdmSecondaryButton}" WidthRequest="90" HeightRequest="36" />
+            <Button Text="Start Download" Clicked="OnStartDownloadClicked" Style="{StaticResource IdmPrimaryButton}" WidthRequest="130" HeightRequest="36" />
+            <Button Text="Download Later" Clicked="OnDownloadLaterClicked" Style="{StaticResource IdmSecondaryButton}" WidthRequest="130" HeightRequest="36" />
+            <Button Text="Cancel" Clicked="OnCancelClicked" Style="{StaticResource IdmSecondaryButton}" WidthRequest="90" HeightRequest="36" />
         </HorizontalStackLayout>
     </Grid>
 

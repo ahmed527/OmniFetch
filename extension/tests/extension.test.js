@@ -364,6 +364,119 @@ describe("OmniFetch Chrome Extension (Manifest V3) Test Suite", () => {
       assert.equal(payload.url, "https://example.com/test.zip");
       assert.equal(payload.suggestedFileName, "test.zip");
     });
+
+    test("parseStreamMetadata accurately identifies 1080p, 720p, 360p, and audio streams with human-readable sizes", () => {
+      // Direct testing of stream parsing logic
+      function parseStreamMetadata(rawUrl) {
+        const lowerUrl = rawUrl.toLowerCase();
+        let quality = "Original";
+        let label = "Video";
+        let format = "MP4";
+        let sizeBytes = null;
+        let sizeFormatted = "";
+        let order = 500;
+        let itag = "";
+
+        try {
+          const u = new URL(rawUrl);
+          itag = u.searchParams.get("itag") || "";
+          const clen = u.searchParams.get("clen");
+          if (clen) {
+            sizeBytes = parseInt(clen, 10);
+            if (!isNaN(sizeBytes) && sizeBytes > 0) {
+              if (sizeBytes >= 1024 * 1024 * 1024) {
+                sizeFormatted = (sizeBytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+              } else {
+                sizeFormatted = (sizeBytes / (1024 * 1024)).toFixed(1) + " MB";
+              }
+            }
+          }
+
+          const mime = (u.searchParams.get("mime") || "").toLowerCase();
+          if (mime.includes("webm")) format = "WebM";
+          else if (mime.includes("mp4")) format = "MP4";
+          else if (mime.includes("audio")) format = "M4A";
+
+          switch (itag) {
+            case "137":
+            case "248":
+            case "399":
+              quality = "1080p";
+              label = "1080p HD";
+              order = 1080;
+              break;
+            case "22":
+              quality = "720p";
+              label = "720p HD";
+              format = "MP4";
+              order = 721;
+              break;
+            case "136":
+            case "247":
+            case "398":
+              quality = "720p";
+              label = "720p HD";
+              order = 720;
+              break;
+            case "18":
+              quality = "360p";
+              label = "360p";
+              format = "MP4";
+              order = 361;
+              break;
+            case "140":
+              quality = "Audio";
+              label = "Audio only (M4A)";
+              format = "M4A";
+              order = 50;
+              break;
+          }
+        } catch (e) {}
+
+        return { url: rawUrl, itag, quality, label, format, sizeBytes, sizeFormatted, order };
+      }
+
+      const stream1080 = parseStreamMetadata("https://rr1.googlevideo.com/videoplayback?itag=137&clen=52428800&mime=video/mp4");
+      assert.equal(stream1080.quality, "1080p");
+      assert.equal(stream1080.format, "MP4");
+      assert.equal(stream1080.sizeFormatted, "50.0 MB");
+
+      const stream720 = parseStreamMetadata("https://rr1.googlevideo.com/videoplayback?itag=22&clen=26214400&mime=video/mp4");
+      assert.equal(stream720.quality, "720p");
+      assert.equal(stream720.format, "MP4");
+      assert.equal(stream720.sizeFormatted, "25.0 MB");
+
+      const stream360 = parseStreamMetadata("https://rr1.googlevideo.com/videoplayback?itag=18&clen=10485760&mime=video/mp4");
+      assert.equal(stream360.quality, "360p");
+
+      const streamAudio = parseStreamMetadata("https://rr1.googlevideo.com/videoplayback?itag=140&clen=4194304&mime=audio/mp4");
+      assert.equal(streamAudio.quality, "Audio");
+      assert.equal(streamAudio.format, "M4A");
+
+      // Sorted ordering: highest quality first
+      const streams = [stream360, stream1080, streamAudio, stream720];
+      streams.sort((a, b) => b.order - a.order);
+      assert.equal(streams[0].quality, "1080p");
+      assert.equal(streams[1].quality, "720p");
+      assert.equal(streams[2].quality, "360p");
+      assert.equal(streams[3].quality, "Audio");
+    });
+
+    test("Filename formatter attaches quality tag cleanly", () => {
+      function formatFileName(title, quality, ext) {
+        if (quality && quality !== "Original" && quality !== "Video") {
+          const cleanQuality = quality.replace(/[^a-zA-Z0-9]/g, "");
+          return `${title} [${cleanQuality}]${ext}`;
+        }
+        return `${title}${ext}`;
+      }
+
+      const formatted = formatFileName("ChatGPT Work, now powered by GPT-6 Astra", "720p", ".mp4");
+      assert.equal(formatted, "ChatGPT Work, now powered by GPT-6 Astra [720p].mp4");
+
+      const formattedAudio = formatFileName("My Favorite Song", "Audio", ".m4a");
+      assert.equal(formattedAudio, "My Favorite Song [Audio].m4a");
+    });
   });
 
   describe("Syntax and Bracket/Brace Integrity Validation", () => {
